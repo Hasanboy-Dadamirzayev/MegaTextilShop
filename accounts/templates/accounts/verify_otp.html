@@ -1,0 +1,61 @@
+{% extends 'accounts/base.html' %}
+
+{% block content %}
+<div class="auth-header">
+    <div class="logo-wrapper">
+        <i class="fas fa-shield-alt"></i>
+    </div>
+    <h2>Kodni tasdiqlash</h2>
+    <p>{{ phone_number }} raqamiga 6 xonali kod yuborildi</p>
+</div>
+
+<div class="auth-body">
+    <div class="alert-custom alert-info-custom" style="margin-bottom: 1.5rem;">
+        <i class="fas fa-terminal me-2"></i>
+        <strong>Terminalni tekshiring!</strong> Tasdiqlash kodi terminalda chiqarilgan
+    </div>
+
+    <form method="post">
+        {% csrf_token %}
+
+        <div class="form-field">
+            <label class="text-center d-block">TASDIQLASH KODI</label>
+            <div class="input-group-custom">
+                <i class="fas fa-key"></i>
+                <input type="text" name="otp_code" placeholder="000000" class="form-control otp-code-input" maxlength="6" autocomplete="off" required>
+            </div>
+        </div>
+
+        <button type="submit" class="btn-primary-custom">
+            <i class="fas fa-check-circle me-2"></i> Tasdiqlash
+        </button>
+    </form>
+
+    <div class="text-center mt-4">
+        <a href="{% url 'register' %}" class="link-custom">
+            <i class="fas fa-redo me-1"></i> Qayta urinish
+        </a>
+    </div>
+
+    <div class="feature-row">
+        <div class="feature-item">
+            <i class="fas fa-clock"></i>
+            <span>5 daqiqa amal qiladi</span>
+        </div>
+        <div class="feature-item">
+            <i class="fas fa-lock"></i>
+            <span>Xavfsiz kod</span>
+        </div>
+        <div class="feature-item">
+            <i class="fas fa-fingerprint"></i>
+            <span>Bir martalik</span>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.querySelector('input[name="otp_code"]').addEventListener('input', function(e) {
+        this.value = this.value.replace(/[^0-9]/g, '').slice(0, 6);
+    });
+</script>
+{% endblock %}

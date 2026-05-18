@@ -1,0 +1,56 @@
+{% extends 'accounts/base.html' %}
+
+{% block content %}
+<div class="auth-header">
+    <div class="logo-wrapper">
+        <i class="fas fa-user-check"></i>
+    </div>
+    <h2>Xush kelibsiz!</h2>
+    <p>{{ user.phone_number }}</p>
+    <div style="display: inline-block; background: #e8f5e9; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.6875rem; color: #2e7d32; margin-top: 0.5rem;">
+        <i class="fas fa-check-circle me-1"></i> Tasdiqlangan akkaunt
+    </div>
+</div>
+
+<div class="auth-body">
+    <div class="row g-3 mb-4">
+        <div class="col-6">
+            <div style="background: #f1f8e9; border-radius: 20px; padding: 1.25rem; text-align: center; transition: all 0.2s ease;">
+                <i class="fas fa-tshirt" style="font-size: 28px; color: #2e7d32;"></i>
+                <h5 style="color: #1a2e1f; margin-top: 0.5rem; margin-bottom: 0;">Mahsulotlar</h5>
+                <small style="color: #6c757d;">100+ turdagi matolar</small>
+            </div>
+        </div>
+        <div class="col-6">
+            <div style="background: #f1f8e9; border-radius: 20px; padding: 1.25rem; text-align: center; transition: all 0.2s ease;">
+                <i class="fas fa-shopping-cart" style="font-size: 28px; color: #2e7d32;"></i>
+                <h5 style="color: #1a2e1f; margin-top: 0.5rem; margin-bottom: 0;">Savat</h5>
+                <small style="color: #6c757d;">0 ta mahsulot</small>
+            </div>
+        </div>
+    </div>
+
+    <button class="btn-primary-custom mb-3" onclick="alert('Do\'kon sahifasi tez orada!')">
+        <i class="fas fa-store me-2"></i> Do'konga o'tish
+    </button>
+
+    <a href="{% url 'logout' %}" class="btn-secondary-custom">
+        <i class="fas fa-sign-out-alt me-2"></i> Chiqish
+    </a>
+
+    <div class="feature-row">
+        <div class="feature-item">
+            <i class="fas fa-chart-line"></i>
+            <span>Bugun: 124 tashrif</span>
+        </div>
+        <div class="feature-item">
+            <i class="fas fa-truck"></i>
+            <span>23 buyurtma</span>
+        </div>
+        <div class="feature-item">
+            <i class="fas fa-star"></i>
+            <span>4.9 reyting</span>
+        </div>
+    </div>
+</div>
+{% endblock %}

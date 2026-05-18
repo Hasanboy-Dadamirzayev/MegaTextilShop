@@ -1,0 +1,62 @@
+{% extends 'accounts/base.html' %}
+
+{% block content %}
+<div class="auth-header">
+    <div class="logo-wrapper">
+        <i class="fas fa-store"></i>
+    </div>
+    <h2>Kirish</h2>
+    <p>Mega Textil do'koniga xush kelibsiz</p>
+</div>
+
+<div class="auth-body">
+    <form method="post">
+        {% csrf_token %}
+
+        <div class="form-field">
+            <label>TELEFON RAQAM</label>
+            <div class="input-group-custom">
+                <i class="fas fa-mobile-alt"></i>
+                <input type="text" name="username" placeholder="+998 XX XXX XX XX" class="form-control" autocomplete="off" required>
+            </div>
+        </div>
+
+        <div class="form-field">
+            <label>PAROL</label>
+            <div class="input-group-custom">
+                <i class="fas fa-lock"></i>
+                <input type="password" name="password" placeholder="Parolingizni kiriting" class="form-control" required>
+            </div>
+        </div>
+
+
+
+        <button type="submit" class="btn-primary-custom">
+            <i class="fas fa-arrow-right me-2"></i> Kirish
+        </button>
+    </form>
+
+    <div class="divider">Yangi mijoz</div>
+
+    <div class="text-center">
+        <a href="{% url 'register' %}" class="link-custom">
+            Hisob yaratish <i class="fas fa-arrow-right ms-1"></i>
+        </a>
+    </div>
+
+    <div class="feature-row">
+        <div class="feature-item">
+            <i class="fas fa-truck-fast"></i>
+            <span>Tez yetkazib berish</span>
+        </div>
+        <div class="feature-item">
+            <i class="fas fa-shield-heart"></i>
+            <span>Xavfsiz to'lov</span>
+        </div>
+        <div class="feature-item">
+            <i class="fas fa-headset"></i>
+            <span>24/7 yordam</span>
+        </div>
+    </div>
+</div>
+{% endblock %}

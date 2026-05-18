@@ -1,0 +1,55 @@
+{% extends 'accounts/base.html' %}
+
+{% block content %}
+<div class="auth-header">
+    <div class="logo-wrapper">
+        <i class="fas fa-user-plus"></i>
+    </div>
+    <h2>Ro'yxatdan o'tish</h2>
+    <p>Mega Textil oilasiga qo'shiling</p>
+</div>
+
+<div class="auth-body">
+    <form method="post">
+        {% csrf_token %}
+
+        <div class="form-field">
+            <label>TELEFON RAQAM</label>
+            <div class="input-group-custom">
+                <i class="fas fa-mobile-alt"></i>
+                <input type="text" name="phone_number" placeholder="+998 XX XXX XX XX" class="form-control" autocomplete="off" required>
+            </div>
+            <small style="font-size: 0.6875rem; color: #6c757d; display: block; margin-top: 0.5rem;">
+                <i class="fas fa-info-circle me-1"></i> Telefon raqamingizni xalqaro formatda kiriting
+            </small>
+        </div>
+
+        <button type="submit" class="btn-primary-custom">
+            <i class="fas fa-sms me-2"></i> Kod yuborish
+        </button>
+    </form>
+
+    <div class="divider">Hisobingiz bormi?</div>
+
+    <div class="text-center">
+        <a href="{% url 'login' %}" class="link-custom">
+            Kirish <i class="fas fa-arrow-right ms-1"></i>
+        </a>
+    </div>
+
+    <div class="feature-row">
+        <div class="feature-item">
+            <i class="fas fa-gift"></i>
+            <span>Xush kelibsiz sovg'asi</span>
+        </div>
+        <div class="feature-item">
+            <i class="fas fa-percent"></i>
+            <span>Birinchi xarid 10% chegirma</span>
+        </div>
+        <div class="feature-item">
+            <i class="fas fa-gem"></i>
+            <span>Premium sifat</span>
+        </div>
+    </div>
+</div>
+{% endblock %}

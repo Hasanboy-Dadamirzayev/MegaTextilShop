@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mega Textil | Premium To'qimachilik Online Do'koni</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(145deg, #e6f4e8 0%, #d4e8d6 100%);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            min-height: 100vh;
+            position: relative;
+        }
+
+        /* Professional fon elementlari */
+        .bg-shapes {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            z-index: 0;
+        }
+
+        .shape {
+            position: absolute;
+            background: rgba(76, 175, 80, 0.08);
+            border-radius: 50%;
+            animation: float 20s ease-in-out infinite;
+        }
+
+        .shape-1 { width: 400px; height: 400px; top: -150px; right: -100px; animation-delay: 0s; }
+        .shape-2 { width: 300px; height: 300px; bottom: -100px; left: -80px; animation-delay: 5s; }
+        .shape-3 { width: 200px; height: 200px; top: 50%; left: 20%; animation-delay: 10s; animation-duration: 15s; }
+        .shape-4 { width: 250px; height: 250px; bottom: 20%; right: 10%; animation-delay: 3s; animation-duration: 25s; }
+
+        @keyframes float {
+            0%, 100% { transform: translate(0, 0) rotate(0deg); }
+            33% { transform: translate(30px, -30px) rotate(120deg); }
+            66% { transform: translate(-20px, 20px) rotate(240deg); }
+        }
+
+        /* Asosiy container */
+        .auth-container {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        .auth-card {
+            max-width: 460px;
+            width: 100%;
+            background: #ffffff;
+            border-radius: 32px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.05), 0 4px 12px rgba(0, 0, 0, 0.03);
+            overflow: hidden;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .auth-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 28px 48px rgba(0, 0, 0, 0.08);
+        }
+
+        /* Card header */
+        .auth-header {
+            padding: 2rem 2rem 0 2rem;
+            text-align: center;
+        }
+
+        .logo-wrapper {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 72px;
+            height: 72px;
+            background: linear-gradient(145deg, #2e7d32, #1b5e20);
+            border-radius: 24px;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 8px 20px rgba(46, 125, 50, 0.25);
+        }
+
+        .logo-wrapper i {
+            font-size: 32px;
+            color: white;
+        }
+
+        .auth-header h2 {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: #1a2e1f;
+            margin-bottom: 0.5rem;
+        }
+
+        .auth-header p {
+            font-size: 0.875rem;
+            color: #6c757d;
+        }
+
+        /* Card body */
+        .auth-body {
+            padding: 2rem;
+        }
+
+        /* Form elementlari */
+        .form-field {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-field label {
+            display: block;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #2e7d32;
+            margin-bottom: 0.5rem;
+        }
+
+        .input-group-custom {
+            position: relative;
+        }
+
+        .input-group-custom i {
+            position: absolute;
+            left: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #81c784;
+            font-size: 1rem;
+            transition: color 0.2s ease;
+            pointer-events: none;
+        }
+
+        .input-group-custom input {
+            width: 100%;
+            padding: 0.875rem 1rem 0.875rem 2.75rem;
+            font-size: 0.9375rem;
+            border: 1.5px solid #e8ece8;
+            border-radius: 16px;
+            background: #ffffff;
+            transition: all 0.2s ease;
+            outline: none;
+        }
+
+        .input-group-custom input:focus {
+            border-color: #4caf50;
+            box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.1);
+        }
+
+        .input-group-custom input:focus + i {
+            color: #2e7d32;
+        }
+
+        /* Tugmalar */
+        .btn-primary-custom {
+            width: 100%;
+            padding: 0.875rem;
+            font-size: 0.9375rem;
+            font-weight: 600;
+            background: #2e7d32;
+            color: white;
+            border: none;
+            border-radius: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary-custom:hover {
+            background: #1b5e20;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 14px rgba(46, 125, 50, 0.3);
+        }
+
+        .btn-primary-custom:active {
+            transform: translateY(0);
+        }
+
+        .btn-secondary-custom {
+            width: 100%;
+            padding: 0.875rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+            background: transparent;
+            border: 1.5px solid #e0e4e0;
+            border-radius: 16px;
+            color: #4a5568;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-secondary-custom:hover {
+            border-color: #81c784;
+            background: #f8fdf8;
+        }
+
+        /* Linklar */
+        .link-custom {
+            color: #2e7d32;
+            text-decoration: none;
+            font-size: 0.8125rem;
+            font-weight: 500;
+            transition: color 0.2s ease;
+        }
+
+        .link-custom:hover {
+            color: #1b5e20;
+            text-decoration: underline;
+        }
+
+        /* Divider */
+        .divider {
+            display: flex;
+            align-items: center;
+            text-align: center;
+            margin: 1.5rem 0;
+            color: #a0aec0;
+            font-size: 0.75rem;
+        }
+
+        .divider::before,
+        .divider::after {
+            content: '';
+            flex: 1;
+            border-bottom: 1px solid #e2e8e2;
+        }
+
+        .divider::before {
+            margin-right: 1rem;
+        }
+
+        .divider::after {
+            margin-left: 1rem;
+        }
+
+        /* Feature row */
+        .feature-row {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 1.75rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid #edf2ed;
+        }
+
+        .feature-item {
+            text-align: center;
+            flex: 1;
+            transition: transform 0.2s ease;
+        }
+
+        .feature-item:hover {
+            transform: translateY(-3px);
+        }
+
+        .feature-item i {
+            font-size: 1.25rem;
+            color: #81c784;
+            margin-bottom: 0.5rem;
+            display: inline-block;
+        }
+
+        .feature-item span {
+            font-size: 0.6875rem;
+            color: #718096;
+            display: block;
+        }
+
+        /* Alert */
+        .alert-custom {
+            border-radius: 16px;
+            padding: 0.875rem 1rem;
+            margin-bottom: 1.5rem;
+            font-size: 0.8125rem;
+            border: none;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .alert-success-custom {
+            background: #e8f5e9;
+            color: #2e7d32;
+            border-left: 3px solid #4caf50;
+        }
+
+        .alert-error-custom {
+            background: #ffebee;
+            color: #c62828;
+            border-left: 3px solid #ef5350;
+        }
+
+        .alert-info-custom {
+            background: #e3f2fd;
+            color: #1565c0;
+            border-left: 3px solid #42a5f5;
+        }
+
+        /* Footer */
+        .auth-footer {
+            text-align: center;
+            margin-top: 1.5rem;
+            font-size: 0.6875rem;
+            color: #9aaebf;
+        }
+
+        /* OTP input */
+        .otp-code-input {
+            text-align: center;
+            font-size: 1.375rem;
+            letter-spacing: 0.5rem;
+            font-weight: 600;
+            font-family: 'Courier New', monospace;
+        }
+
+        /* Loading */
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .btn-loading {
+            pointer-events: none;
+            opacity: 0.7;
+        }
+
+        .btn-loading i {
+            animation: spin 0.6s linear infinite;
+        }
+
+        /* Responsive */
+        @media (max-width: 576px) {
+            .auth-container {
+                padding: 1rem;
+            }
+            .auth-body {
+                padding: 1.5rem;
+            }
+            .auth-header {
+                padding: 1.5rem 1.5rem 0 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-shapes">
+        <div class="shape shape-1"></div>
+        <div class="shape shape-2"></div>
+        <div class="shape shape-3"></div>
+        <div class="shape shape-4"></div>
+    </div>
+
+    <div class="auth-container">
+        <div class="auth-card">
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert-custom
+                        {% if message.tags == 'success' %}alert-success-custom
+                        {% elif message.tags == 'error' %}alert-error-custom
+                        {% else %}alert-info-custom{% endif %}"
+                        style="margin: 1.5rem 1.5rem 0 1.5rem;">
+                        <i class="fas {% if message.tags == 'success' %}fa-check-circle
+                                   {% elif message.tags == 'error' %}fa-exclamation-circle
+                                   {% else %}fa-info-circle{% endif %} me-2"></i>
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+
+            {% block content %}{% endblock %}
+
+            <div class="auth-footer">
+                <i class="fas fa-leaf me-1"></i>Mega Textil | Premium sifatli to'qimachilik
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Form submit loading
+        document.querySelectorAll('form').forEach(form => {
+            form.addEventListener('submit', function() {
+                const btn = this.querySelector('button[type="submit"]');
+                if (btn) {
+                    btn.classList.add('btn-loading');
+                    const originalText = btn.innerHTML;
+                    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Yuklanmoqda...';
+                    setTimeout(() => {
+                        if (btn.classList.contains('btn-loading')) {
+                            btn.classList.remove('btn-loading');
+                            btn.innerHTML = originalText;
+                        }
+                    }, 5000);
+                }
+            });
+        });
+
+        // Auto close alerts after 4 seconds
+        setTimeout(() => {
+            document.querySelectorAll('.alert-custom').forEach(alert => {
+                alert.style.transition = 'all 0.3s ease';
+                alert.style.opacity = '0';
+                alert.style.transform = 'translateX(-20px)';
+                setTimeout(() => alert.remove(), 300);
+            });
+        }, 4000);
+    </script>
+</body>
+</html>
