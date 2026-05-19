@@ -1,0 +1,144 @@
+{% extends 'shop/base.html' %}
+
+{% block content %}
+<div class="container">
+    <h2 class="mb-4" style="color: #1a2e1f;"><i class="fas fa-shopping-cart me-2"></i>Savat</h2>
+
+    {% if cart.items.all %}
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm rounded-4">
+                <div class="card-body p-4">
+                    {% for item in cart.items.all %}
+                    <div class="row align-items-center mb-4 pb-3 border-bottom" id="cart-item-{{ item.id }}">
+                        <div class="col-3 col-md-2">
+                            {% if item.product.image %}
+                            <img src="{{ item.product.image.url }}" alt="{{ item.product.name }}" class="img-fluid rounded-3" style="width: 80px; height: 80px; object-fit: cover;">
+                            {% else %}
+                            <div class="bg-light rounded-3 d-flex align-items-center justify-content-center" style="width: 80px; height: 80px;">
+                                <i class="fas fa-image text-muted fa-2x"></i>
+                            </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-5 col-md-5">
+                            <a href="{{ item.product.get_absolute_url }}" class="text-decoration-none text-dark">
+                                <h6 class="mb-1">{{ item.product.name|truncatechars:40 }}</h6>
+                            </a>
+                            <div class="text-success fw-bold">{{ item.product.price|floatformat:0 }} so'm</div>
+                        </div>
+                        <div class="col-2 col-md-3">
+                            <div class="d-flex align-items-center gap-2">
+                                <button class="btn btn-sm btn-outline-secondary" onclick="updateQuantity({{ item.id }}, {{ item.quantity|add:-1 }})">-</button>
+                                <input type="number" id="qty-{{ item.id }}" value="{{ item.quantity }}" class="form-control text-center" style="width: 50px;" min="1" max="{{ item.product.stock }}">
+                                <button class="btn btn-sm btn-outline-secondary" onclick="updateQuantity({{ item.id }}, {{ item.quantity|add:1 }})">+</button>
+                            </div>
+                        </div>
+                        <div class="col-2 col-md-2 text-end">
+                            <div class="fw-bold text-success">{{ item.total_price|floatformat:0 }} so'm</div>
+                            <button class="btn btn-link text-danger p-0 mt-1" onclick="removeItem({{ item.id }})">
+                                <i class="fas fa-trash-alt"></i> O'chirish
+                            </button>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4 mt-4 mt-lg-0">
+            <div class="card border-0 shadow-sm rounded-4">
+                <div class="card-body p-4">
+                    <h5 class="mb-3">Buyurtma haqida</h5>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted">Mahsulotlar soni:</span>
+                        <span class="fw-bold">{{ cart.total_items }} dona</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-3">
+                        <span class="text-muted">Umumiy summa:</span>
+                        <span class="fw-bold text-success fs-5">{{ cart.total_price|floatformat:0 }} so'm</span>
+                    </div>
+                    <hr>
+                    <a href="{% url 'shop:checkout' %}" class="btn-primary-custom w-100 py-2 text-center">
+                        <i class="fas fa-credit-card me-2"></i> Buyurtma berish
+                    </a>
+                    <a href="{% url 'shop:product_list' %}" class="btn-outline-custom w-100 text-center mt-3">
+                        <i class="fas fa-arrow-left me-2"></i> Xaridni davom ettirish
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="text-center py-5">
+        <i class="fas fa-shopping-cart fa-4x text-muted mb-3"></i>
+        <h4 class="text-muted">Savat bo'sh</h4>
+        <p class="text-muted">Hali hech qanday mahsulot qo'shilmagan</p>
+        <a href="{% url 'shop:product_list' %}" class="btn-primary-custom">Mahsulotlarni ko'rish</a>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+    function updateQuantity(itemId, newQuantity) {
+        if (newQuantity < 1) return;
+
+        fetch("{% url 'shop:cart_update' 0 %}".replace('0', itemId), {
+            method: "POST",
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({quantity: newQuantity})
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                showToast(data.message, 'error');
+            }
+        });
+    }
+
+    function removeItem(itemId) {
+        if (confirm("Mahsulotni savatdan o'chirmoqchimisiz?")) {
+            window.location.href = "{% url 'shop:cart_remove' 0 %}".replace('0', itemId);
+        }
+    }
+
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    function showToast(message, type) {
+        var toast = document.createElement('div');
+        toast.innerHTML = message;
+        toast.style.position = 'fixed';
+        toast.style.bottom = '20px';
+        toast.style.right = '20px';
+        toast.style.zIndex = '9999';
+        toast.style.padding = '12px 20px';
+        toast.style.borderRadius = '12px';
+        toast.style.color = 'white';
+        toast.style.fontWeight = '500';
+        toast.style.backgroundColor = type === 'success' ? '#2e7d32' : '#dc3545';
+        document.body.appendChild(toast);
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transition = 'all 0.3s ease';
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
+    }
+</script>
+{% endblock %}

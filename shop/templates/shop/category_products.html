@@ -1,0 +1,82 @@
+{% extends 'shop/base.html' %}
+
+{% block content %}
+<div class="container">
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'shop:index' %}" class="text-decoration-none">Bosh sahifa</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'shop:product_list' %}" class="text-decoration-none">Mahsulotlar</a></li>
+            <li class="breadcrumb-item active">{{ category.name }}</li>
+        </ol>
+    </nav>
+
+    <div class="mb-4">
+        <h2 style="color: #1a2e1f;">{{ category.name }}</h2>
+        <p class="text-muted">{{ products|length }} ta mahsulot</p>
+    </div>
+
+    {% if products %}
+    <div class="row g-4">
+        {% for product in products %}
+        <div class="col-6 col-md-4 col-lg-3">
+            <div class="card h-100 border-0 shadow-sm rounded-4 product-card">
+                <a href="{{ product.get_absolute_url }}" class="text-decoration-none">
+                    {% if product.image %}
+                    <img src="{{ product.image.url }}" class="card-img-top rounded-top-4" alt="{{ product.name }}" style="height: 200px; object-fit: cover;">
+                    {% else %}
+                    <div class="bg-light rounded-top-4 d-flex align-items-center justify-content-center" style="height: 200px;">
+                        <i class="fas fa-image fa-4x text-muted"></i>
+                    </div>
+                    {% endif %}
+                    <div class="card-body">
+                        <h6 class="card-title text-dark mb-2">{{ product.name|truncatechars:50 }}</h6>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="fw-bold text-success">{{ product.price|floatformat:0 }} so'm</span>
+                            {% if product.old_price %}
+                            <span class="text-muted text-decoration-line-through small">{{ product.old_price|floatformat:0 }} so'm</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </a>
+                <div class="card-footer bg-transparent border-0 pb-3">
+                    {% if product.stock > 0 %}
+                    <button class="btn-primary-custom w-100" onclick="addToCart({{ product.id }})" style="padding: 0.5rem;">
+                        <i class="fas fa-cart-plus me-2"></i> Savatga
+                    </button>
+                    {% else %}
+                    <button class="btn-secondary-custom w-100" disabled>
+                        <i class="fas fa-times-circle me-2"></i> Soni tugagan
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="text-center py-5">
+        <i class="fas fa-box-open fa-4x text-muted mb-3"></i>
+        <h4 class="text-muted">Bu kategoriyada mahsulot topilmadi</h4>
+        <a href="{% url 'shop:product_list' %}" class="btn-primary-custom mt-3">Barcha mahsulotlar</a>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+    .product-card {
+        transition: all 0.2s ease;
+    }
+    .product-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 12px 24px rgba(0,0,0,0.1) !important;
+    }
+    .btn-secondary-custom {
+        background: #e0e0e0;
+        border: none;
+        padding: 0.5rem;
+        border-radius: 12px;
+        font-weight: 600;
+        color: #666;
+    }
+</style>
+{% endblock %}

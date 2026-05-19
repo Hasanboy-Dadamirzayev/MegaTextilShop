@@ -1,0 +1,22 @@
+from django.urls import path
+from . import views
+
+app_name = 'shop'
+
+urlpatterns = [
+    path('', views.index_view, name='index'),
+    path('products/', views.product_list_view, name='product_list'),
+    path('category/<slug:category_slug>/', views.category_products_view, name='category_products'),
+    path('product/<slug:category_slug>/<slug:product_slug>/', views.product_detail_view, name='product_detail'),
+
+    # Savat
+    path('cart/', views.cart_view, name='cart'),
+    path('cart/add/', views.cart_add_view, name='cart_add'),
+    path('cart/remove/<int:item_id>/', views.cart_remove_view, name='cart_remove'),
+    path('cart/update/<int:item_id>/', views.cart_update_view, name='cart_update'),
+
+    # Buyurtma
+    path('checkout/', views.checkout_view, name='checkout'),
+    path('order/success/<int:order_id>/', views.order_success_view, name='order_success'),
+    path('my-orders/', views.my_orders_view, name='my_orders'),
+]

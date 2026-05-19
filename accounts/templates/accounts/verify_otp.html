@@ -1,61 +1,143 @@
-{% extends 'accounts/base.html' %}
+{% load static %}
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SavdoHub | Kodni tasdiqlash</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        body {
+            background: linear-gradient(145deg, #e8f5e9 0%, #c8e6c9 100%);
+            min-height: 100vh;
+            font-family: 'Inter', sans-serif;
+        }
+        .verify-card {
+            max-width: 450px;
+            margin: 100px auto;
+            background: white;
+            border-radius: 28px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.05);
+            overflow: hidden;
+        }
+        .logo-wrapper {
+            width: 70px;
+            height: 70px;
+            background: linear-gradient(145deg, #2e7d32, #1b5e20);
+            border-radius: 24px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1.5rem;
+        }
+        .btn-primary-custom {
+            background: #2e7d32;
+            color: white;
+            border: none;
+            padding: 0.875rem;
+            border-radius: 16px;
+            font-weight: 600;
+            width: 100%;
+            transition: all 0.2s ease;
+        }
+        .btn-primary-custom:hover {
+            background: #1b5e20;
+            transform: translateY(-2px);
+        }
+        .form-control {
+            border-radius: 14px;
+            padding: 0.75rem 1rem;
+            border: 1.5px solid #e5e7eb;
+        }
+        .form-control:focus {
+            border-color: #4caf50;
+            box-shadow: 0 0 0 3px rgba(76,175,80,0.1);
+        }
+        .link-custom {
+            color: #2e7d32;
+            text-decoration: none;
+        }
+        .link-custom:hover {
+            text-decoration: underline;
+        }
+        .otp-input {
+            text-align: center;
+            font-size: 1.5rem;
+            letter-spacing: 0.5rem;
+            font-weight: 600;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="verify-card">
+            <div class="p-5">
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="alert alert-{% if message.tags == 'success' %}success{% elif message.tags == 'error' %}danger{% else %}info{% endif %} alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
 
-{% block content %}
-<div class="auth-header">
-    <div class="logo-wrapper">
-        <i class="fas fa-shield-alt"></i>
-    </div>
-    <h2>Kodni tasdiqlash</h2>
-    <p>{{ phone_number }} raqamiga 6 xonali kod yuborildi</p>
-</div>
+                <div class="text-center mb-4">
+                    <div class="logo-wrapper">
+                        <i class="fas fa-shield-alt fa-2x text-white"></i>
+                    </div>
+                    <h2 style="color: #1a2e1f;">Kodni tasdiqlash</h2>
+                    <p class="text-muted">{{ phone_number }} raqamiga kod yuborildi</p>
+                </div>
 
-<div class="auth-body">
-    <div class="alert-custom alert-info-custom" style="margin-bottom: 1.5rem;">
-        <i class="fas fa-terminal me-2"></i>
-        <strong>Terminalni tekshiring!</strong> Tasdiqlash kodi terminalda chiqarilgan
-    </div>
+                <div class="alert alert-info mb-4">
+                    <i class="fas fa-terminal me-2"></i>
+                    <strong>Terminalni tekshiring!</strong> Tasdiqlash kodi terminalda chiqarilgan
+                </div>
 
-    <form method="post">
-        {% csrf_token %}
+                <form method="post">
+                    {% csrf_token %}
 
-        <div class="form-field">
-            <label class="text-center d-block">TASDIQLASH KODI</label>
-            <div class="input-group-custom">
-                <i class="fas fa-key"></i>
-                <input type="text" name="otp_code" placeholder="000000" class="form-control otp-code-input" maxlength="6" autocomplete="off" required>
+                    <div class="mb-3">
+                        <label class="form-label">Tasdiqlash kodi</label>
+                        {{ form.otp_code }}
+                    </div>
+
+                    <button type="submit" class="btn-primary-custom">
+                        <i class="fas fa-check-circle me-2"></i> Tasdiqlash
+                    </button>
+                </form>
+
+                <div class="text-center mt-4">
+                    <a href="{% url 'accounts:register' %}" class="link-custom">
+                        <i class="fas fa-redo me-1"></i> Qayta urinish
+                    </a>
+                </div>
+
+                <div class="row mt-4 pt-3">
+                    <div class="col-4 text-center">
+                        <i class="fas fa-clock" style="color: #81c784;"></i>
+                        <p class="small text-muted mt-1">5 daqiqa amal qiladi</p>
+                    </div>
+                    <div class="col-4 text-center">
+                        <i class="fas fa-lock" style="color: #81c784;"></i>
+                        <p class="small text-muted mt-1">Xavfsiz kod</p>
+                    </div>
+                    <div class="col-4 text-center">
+                        <i class="fas fa-fingerprint" style="color: #81c784;"></i>
+                        <p class="small text-muted mt-1">Bir martalik</p>
+                    </div>
+                </div>
             </div>
         </div>
-
-        <button type="submit" class="btn-primary-custom">
-            <i class="fas fa-check-circle me-2"></i> Tasdiqlash
-        </button>
-    </form>
-
-    <div class="text-center mt-4">
-        <a href="{% url 'register' %}" class="link-custom">
-            <i class="fas fa-redo me-1"></i> Qayta urinish
-        </a>
     </div>
 
-    <div class="feature-row">
-        <div class="feature-item">
-            <i class="fas fa-clock"></i>
-            <span>5 daqiqa amal qiladi</span>
-        </div>
-        <div class="feature-item">
-            <i class="fas fa-lock"></i>
-            <span>Xavfsiz kod</span>
-        </div>
-        <div class="feature-item">
-            <i class="fas fa-fingerprint"></i>
-            <span>Bir martalik</span>
-        </div>
-    </div>
-</div>
-
-<script>
-    document.querySelector('input[name="otp_code"]').addEventListener('input', function(e) {
-        this.value = this.value.replace(/[^0-9]/g, '').slice(0, 6);
-    });
-</script>
-{% endblock %}
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.querySelector('input[name="otp_code"]').addEventListener('input', function(e) {
+            this.value = this.value.replace(/[^0-9]/g, '').slice(0, 6);
+        });
+    </script>
+</body>
+</html>

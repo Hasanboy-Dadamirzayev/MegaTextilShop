@@ -1,0 +1,272 @@
+{% extends 'shop/base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container">
+    <!-- Hero Section -->
+    <div class="row align-items-center mb-5 py-5">
+        <div class="col-lg-6">
+            <h1 style="color: #1a2e1f; font-size: 3rem; font-weight: 700;">
+                Mega Textil
+                <span style="color: #2e7d32;">Premium</span>
+            </h1>
+            <p class="lead text-muted my-4">
+                Sifatli to'qimachilik mahsulotlari eng qulay narxlarda. 100+ turdagi matolar va tayyor buyumlar.
+            </p>
+            <div class="d-flex gap-3">
+                <a href="{% url 'shop:product_list' %}" class="btn-primary-custom">
+                    <i class="fas fa-shopping-bag me-2"></i> Xarid qilish
+                </a>
+                <a href="https://megatekstil.com/index.html" class="btn-outline-custom">
+                    <i class="fas fa-info-circle me-2"></i> Batafsil
+                </a>
+            </div>
+        </div>
+        <div class="col-lg-6 text-center">
+            <i class="fas fa-tshirt" style="font-size: 200px; color: #81c784;"></i>
+        </div>
+    </div>
+
+    <!-- Kategoriyalar -->
+    {% if categories %}
+    <div class="mb-5">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h3 style="color: #1a2e1f;"><i class="fas fa-tags me-2"></i>Kategoriyalar</h3>
+            <a href="{% url 'shop:product_list' %}" class="link-custom">Barchasi <i class="fas fa-arrow-right ms-1"></i></a>
+        </div>
+        <div class="row g-4">
+            {% for category in categories %}
+            <div class="col-6 col-md-4 col-lg-2">
+                <a href="{% url 'shop:category_products' category.slug %}" class="text-decoration-none">
+                    <div class="text-center p-3 bg-white rounded-4 shadow-sm hover-effect">
+                        {% if category.image %}
+                            <img src="{{ category.image.url }}" alt="{{ category.name }}" style="width: 60px; height: 60px; object-fit: cover; border-radius: 12px;">
+                        {% else %}
+                            <i class="fas fa-folder-open" style="font-size: 40px; color: #81c784;"></i>
+                        {% endif %}
+                        <p class="mt-2 mb-0 fw-semibold text-dark">{{ category.name }}</p>
+                    </div>
+                </a>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Tavsiya etilgan mahsulotlar -->
+    {% if featured_products %}
+    <div class="mb-5">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h3 style="color: #1a2e1f;"><i class="fas fa-star me-2" style="color: #ffc107;"></i>Tavsiya etilgan</h3>
+            <a href="{% url 'shop:product_list' %}?featured=true" class="link-custom">Hammasi <i class="fas fa-arrow-right ms-1"></i></a>
+        </div>
+        <div class="row g-4">
+            {% for product in featured_products %}
+            <div class="col-6 col-md-4 col-lg-3">
+                <div class="card h-100 border-0 shadow-sm rounded-4 product-card">
+                    <a href="{{ product.get_absolute_url }}" class="text-decoration-none">
+                        {% if product.image %}
+                        <img src="{{ product.image.url }}" class="card-img-top rounded-top-4" alt="{{ product.name }}" style="height: 200px; object-fit: cover;">
+                        {% else %}
+                        <div class="bg-light rounded-top-4 d-flex align-items-center justify-content-center" style="height: 200px;">
+                            <i class="fas fa-image fa-4x text-muted"></i>
+                        </div>
+                        {% endif %}
+                        <div class="card-body">
+                            <h6 class="card-title text-dark mb-2">{{ product.name|truncatechars:40 }}</h6>
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="fw-bold text-success">{{ product.price|floatformat:0 }} so'm</span>
+                                {% if product.old_price %}
+                                <span class="text-muted text-decoration-line-through small">{{ product.old_price|floatformat:0 }} so'm</span>
+                                <span class="badge bg-danger">{{ product.discount_percent }}%</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </a>
+                    <div class="card-footer bg-transparent border-0 pb-3">
+                        <button class="btn-primary-custom w-100 add-to-cart-btn" data-product-id="{{ product.id }}" style="padding: 0.5rem;">
+                            <i class="fas fa-cart-plus me-2"></i> Savatga
+                        </button>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Yangi mahsulotlar -->
+    {% if new_products %}
+    <div class="mb-5">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h3 style="color: #1a2e1f;"><i class="fas fa-gem me-2" style="color: #2e7d32;"></i>Yangi mahsulotlar</h3>
+            <a href="{% url 'shop:product_list' %}?sort=newest" class="link-custom">Hammasi <i class="fas fa-arrow-right ms-1"></i></a>
+        </div>
+        <div class="row g-4">
+            {% for product in new_products %}
+            <div class="col-6 col-md-4 col-lg-3">
+                <div class="card h-100 border-0 shadow-sm rounded-4 product-card">
+                    <a href="{{ product.get_absolute_url }}" class="text-decoration-none">
+                        <div class="position-relative">
+                            {% if product.image %}
+                            <img src="{{ product.image.url }}" class="card-img-top rounded-top-4" alt="{{ product.name }}" style="height: 200px; object-fit: cover;">
+                            {% else %}
+                            <div class="bg-light rounded-top-4 d-flex align-items-center justify-content-center" style="height: 200px;">
+                                <i class="fas fa-image fa-4x text-muted"></i>
+                            </div>
+                            {% endif %}
+                            <span class="position-absolute top-0 end-0 m-2 badge bg-success">Yangi</span>
+                        </div>
+                        <div class="card-body">
+                            <h6 class="card-title text-dark mb-2">{{ product.name|truncatechars:40 }}</h6>
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="fw-bold text-success">{{ product.price|floatformat:0 }} so'm</span>
+                                {% if product.old_price %}
+                                <span class="text-muted text-decoration-line-through small">{{ product.old_price|floatformat:0 }} so'm</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </a>
+                    <div class="card-footer bg-transparent border-0 pb-3">
+                        <button class="btn-primary-custom w-100 add-to-cart-btn" data-product-id="{{ product.id }}" style="padding: 0.5rem;">
+                            <i class="fas fa-cart-plus me-2"></i> Savatga
+                        </button>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Afzalliklar -->
+    <div class="row g-4 py-5">
+        <div class="col-md-3 text-center">
+            <i class="fas fa-truck-fast fa-3x" style="color: #2e7d32;"></i>
+            <h5 class="mt-3">Tez yetkazib berish</h5>
+            <p class="text-muted small">1-3 kun ichida yetkazib berish</p>
+        </div>
+        <div class="col-md-3 text-center">
+            <i class="fas fa-shield-alt fa-3x" style="color: #2e7d32;"></i>
+            <h5 class="mt-3">Xavfsiz to'lov</h5>
+            <p class="text-muted small">Onlayn to'lov xavfsizligi kafolati</p>
+        </div>
+        <div class="col-md-3 text-center">
+            <i class="fas fa-undo-alt fa-3x" style="color: #2e7d32;"></i>
+            <h5 class="mt-3">30 kun kafolat</h5>
+            <p class="text-muted small">Mahsulot sifati kafolati</p>
+        </div>
+        <div class="col-md-3 text-center">
+            <i class="fas fa-headset fa-3x" style="color: #2e7d32;"></i>
+            <h5 class="mt-3">24/7 Qo'llab-quvvatlash</h5>
+            <p class="text-muted small">Istalgan vaqtda yordam</p>
+        </div>
+    </div>
+</div>
+
+<style>
+    .hover-effect {
+        transition: all 0.2s ease;
+    }
+    .hover-effect:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+    }
+    .product-card {
+        transition: all 0.2s ease;
+    }
+    .product-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 12px 24px rgba(0,0,0,0.1) !important;
+    }
+    .link-custom {
+        color: #2e7d32;
+        text-decoration: none;
+        font-weight: 500;
+        position: relative;
+        padding-bottom: 3px;
+    }
+    .link-custom:hover {
+        text-decoration: underline;
+    }
+</style>
+
+<script>
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    function showToast(message, type) {
+        var toast = document.createElement('div');
+        toast.className = 'toast-message';
+        toast.innerHTML = message;
+        toast.style.position = 'fixed';
+        toast.style.bottom = '20px';
+        toast.style.right = '20px';
+        toast.style.zIndex = '9999';
+        toast.style.padding = '12px 20px';
+        toast.style.borderRadius = '12px';
+        toast.style.color = 'white';
+        toast.style.fontWeight = '500';
+        toast.style.animation = 'slideInRight 0.3s ease';
+        if (type === 'success') {
+            toast.style.backgroundColor = '#2e7d32';
+        } else if (type === 'error') {
+            toast.style.backgroundColor = '#dc3545';
+        } else {
+            toast.style.backgroundColor = '#17a2b8';
+        }
+        document.body.appendChild(toast);
+        setTimeout(function() {
+            toast.style.opacity = '0';
+            toast.style.transition = 'all 0.3s ease';
+            setTimeout(function() {
+                toast.remove();
+            }, 300);
+        }, 3000);
+    }
+
+    document.querySelectorAll('.add-to-cart-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            let productId = this.dataset.productId;
+            let $btn = this;
+
+            fetch("{% url 'shop:cart_add' %}", {
+                method: "POST",
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken'),
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({product_id: productId, quantity: 1})
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('cartCount').innerText = data.total_items;
+                    showToast(data.message, 'success');
+                    $btn.innerHTML = '<i class="fas fa-check me-2"></i> Qo\'shildi';
+                    setTimeout(() => {
+                        $btn.innerHTML = '<i class="fas fa-cart-plus me-2"></i> Savatga';
+                    }, 2000);
+                } else {
+                    showToast(data.message, 'error');
+                }
+            })
+            .catch(error => {
+                showToast('Xatolik yuz berdi', 'error');
+            });
+        });
+    });
+</script>
+{% endblock %}

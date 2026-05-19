@@ -1,0 +1,288 @@
+{% extends 'shop/base.html' %}
+
+{% block content %}
+<div class="container">
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'shop:index' %}" class="text-decoration-none">Bosh sahifa</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'shop:product_list' %}" class="text-decoration-none">Mahsulotlar</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'shop:category_products' product.category.slug %}" class="text-decoration-none">{{ product.category.name }}</a></li>
+            <li class="breadcrumb-item active">{{ product.name|truncatechars:30 }}</li>
+        </ol>
+    </nav>
+
+    <div class="row">
+        <div class="col-md-6 mb-4">
+            <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+                {% if product.image %}
+                <img src="{{ product.image.url }}" alt="{{ product.name }}" id="mainImage" style="width: 100%; height: 400px; object-fit: cover;">
+                {% else %}
+                <div class="bg-light d-flex align-items-center justify-content-center" style="height: 400px;">
+                    <i class="fas fa-image fa-5x text-muted"></i>
+                </div>
+                {% endif %}
+            </div>
+            {% if product.image2 or product.image3 %}
+            <div class="row mt-3 g-2">
+                {% if product.image2 %}
+                <div class="col-3">
+                    <img src="{{ product.image2.url }}" class="img-fluid rounded-3 cursor-pointer" style="height: 80px; width: 100%; object-fit: cover; cursor: pointer;" onclick="document.getElementById('mainImage').src=this.src">
+                </div>
+                {% endif %}
+                {% if product.image3 %}
+                <div class="col-3">
+                    <img src="{{ product.image3.url }}" class="img-fluid rounded-3 cursor-pointer" style="height: 80px; width: 100%; object-fit: cover; cursor: pointer;" onclick="document.getElementById('mainImage').src=this.src">
+                </div>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="col-md-6">
+            {% if product.is_new %}
+            <span class="badge bg-success mb-2">Yangi</span>
+            {% endif %}
+            {% if product.is_featured %}
+            <span class="badge bg-warning text-dark mb-2">Tavsiya etilgan</span>
+            {% endif %}
+
+            <h2 style="color: #1a2e1f;" class="mb-3">{{ product.name }}</h2>
+
+            <div class="mb-3">
+                <span class="display-6 fw-bold text-success">{{ product.price|floatformat:0 }} so'm</span>
+                {% if product.old_price %}
+                <span class="text-muted text-decoration-line-through ms-2">{{ product.old_price|floatformat:0 }} so'm</span>
+                <span class="badge bg-danger ms-2">{{ product.discount_percent }}% chegirma</span>
+                {% endif %}
+            </div>
+
+            <div class="mb-3">
+                <i class="fas fa-box me-1 text-muted"></i>
+                <span class="text-muted">Kategoriya:</span>
+                <a href="{% url 'shop:category_products' product.category.slug %}" class="text-decoration-none">{{ product.category.name }}</a>
+            </div>
+
+            <div class="mb-3">
+                {% if product.stock > 0 %}
+                <span class="text-success"><i class="fas fa-check-circle me-1"></i> Mavjud ({{ product.stock }} dona)</span>
+                {% else %}
+                <span class="text-danger"><i class="fas fa-times-circle me-1"></i> Soni tugagan</span>
+                {% endif %}
+            </div>
+
+            <div class="mb-4">
+                <h5 class="mb-2">Mahsulot haqida</h5>
+                <p class="text-muted">{{ product.description|linebreaks }}</p>
+            </div>
+
+            {% if product.stock > 0 %}
+            <div class="d-flex gap-3 align-items-center mb-4">
+                <div class="d-flex align-items-center border rounded-3 overflow-hidden">
+                    <button class="btn btn-light border-0 px-3" type="button" onclick="decrementQuantity()">-</button>
+                    <input type="number" id="quantity" value="1" min="1" max="{{ product.stock }}" class="form-control text-center border-0" style="width: 60px;">
+                    <button class="btn btn-light border-0 px-3" type="button" onclick="incrementQuantity()">+</button>
+                </div>
+                <button class="btn-primary-custom px-4 py-2" id="addToCartBtn" type="button">
+                    <i class="fas fa-cart-plus me-2"></i> Savatga qo'shish
+                </button>
+                <button class="btn-outline-custom px-4 py-2" id="buyNowBtn" type="button">
+                    <i class="fas fa-bolt me-2"></i> Sotib olish
+                </button>
+            </div>
+            {% else %}
+            <button class="btn-secondary-custom w-100 py-2" disabled>
+                <i class="fas fa-times-circle me-2"></i> Soni tugagan
+            </button>
+            {% endif %}
+
+            <div class="mt-4 pt-3 border-top">
+                <div class="row text-center">
+                    <div class="col-4">
+                        <i class="fas fa-truck-fast fa-lg text-success"></i>
+                        <p class="small text-muted mt-1">Tez yetkazib berish</p>
+                    </div>
+                    <div class="col-4">
+                        <i class="fas fa-shield-alt fa-lg text-success"></i>
+                        <p class="small text-muted mt-1">Xavfsiz to'lov</p>
+                    </div>
+                    <div class="col-4">
+                        <i class="fas fa-undo-alt fa-lg text-success"></i>
+                        <p class="small text-muted mt-1">30 kun kafolat</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if related_products %}
+    <div class="mt-5">
+        <h3 class="mb-4" style="color: #1a2e1f;"><i class="fas fa-eye me-2"></i>O'xshash mahsulotlar</h3>
+        <div class="row g-4">
+            {% for related in related_products %}
+            <div class="col-6 col-md-3">
+                <div class="card h-100 border-0 shadow-sm rounded-4 product-card">
+                    <a href="{{ related.get_absolute_url }}" class="text-decoration-none">
+                        {% if related.image %}
+                        <img src="{{ related.image.url }}" class="card-img-top rounded-top-4" alt="{{ related.name }}" style="height: 150px; object-fit: cover;">
+                        {% else %}
+                        <div class="bg-light rounded-top-4 d-flex align-items-center justify-content-center" style="height: 150px;">
+                            <i class="fas fa-image fa-3x text-muted"></i>
+                        </div>
+                        {% endif %}
+                        <div class="card-body">
+                            <h6 class="card-title text-dark mb-2">{{ related.name|truncatechars:35 }}</h6>
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="fw-bold text-success">{{ related.price|floatformat:0 }} so'm</span>
+                                {% if related.old_price %}
+                                <span class="text-muted text-decoration-line-through small">{{ related.old_price|floatformat:0 }} so'm</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+    .cursor-pointer {
+        cursor: pointer;
+    }
+    .cursor-pointer:hover {
+        opacity: 0.8;
+    }
+    .product-card {
+        transition: all 0.2s ease;
+    }
+    .product-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 16px rgba(0,0,0,0.1) !important;
+    }
+    .btn-secondary-custom {
+        background: #e0e0e0;
+        border: none;
+        padding: 0.75rem;
+        border-radius: 12px;
+        font-weight: 600;
+        color: #666;
+    }
+</style>
+
+<script>
+    function incrementQuantity() {
+        let input = document.getElementById('quantity');
+        let max = parseInt(input.max);
+        let value = parseInt(input.value);
+        if (value < max) {
+            input.value = value + 1;
+        }
+    }
+
+    function decrementQuantity() {
+        let input = document.getElementById('quantity');
+        let value = parseInt(input.value);
+        if (value > 1) {
+            input.value = value - 1;
+        }
+    }
+
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    function showToast(message, type) {
+        var toast = document.createElement('div');
+        toast.className = 'toast-message';
+        toast.innerHTML = message;
+        if (type === 'success') {
+            toast.style.backgroundColor = '#2e7d32';
+        } else if (type === 'error') {
+            toast.style.backgroundColor = '#dc3545';
+        } else {
+            toast.style.backgroundColor = '#17a2b8';
+        }
+        document.body.appendChild(toast);
+        setTimeout(function() {
+            toast.style.opacity = '0';
+            setTimeout(function() {
+                toast.remove();
+            }, 300);
+        }, 3000);
+    }
+
+    // Savatga qo'shish
+    document.getElementById('addToCartBtn')?.addEventListener('click', function() {
+        let quantity = parseInt(document.getElementById('quantity').value);
+        let productId = {{ product.id }};
+
+        fetch("{% url 'shop:cart_add' %}", {
+            method: "POST",
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({product_id: productId, quantity: quantity})
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('cartCount').innerText = data.total_items;
+                showToast(data.message, 'success');
+                let btn = document.getElementById('addToCartBtn');
+                btn.innerHTML = '<i class="fas fa-check me-2"></i> Qo\'shildi';
+                setTimeout(() => {
+                    btn.innerHTML = '<i class="fas fa-cart-plus me-2"></i> Savatga qo\'shish';
+                }, 2000);
+            } else {
+                showToast(data.message, 'error');
+            }
+        })
+        .catch(error => {
+            showToast('Xatolik yuz berdi', 'error');
+        });
+    });
+
+    // Sotib olish tugmasi
+    document.getElementById('buyNowBtn')?.addEventListener('click', function() {
+        let quantity = parseInt(document.getElementById('quantity').value);
+        let productId = {{ product.id }};
+
+        // Avval mahsulotni savatga qo'shamiz
+        fetch("{% url 'shop:cart_add' %}", {
+            method: "POST",
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({product_id: productId, quantity: quantity})
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('cartCount').innerText = data.total_items;
+                // So'ngra checkout sahifasiga o'tamiz
+                window.location.href = "{% url 'shop:checkout' %}";
+            } else {
+                showToast(data.message, 'error');
+            }
+        })
+        .catch(error => {
+            showToast('Xatolik yuz berdi', 'error');
+        });
+    });
+</script>
+{% endblock %}

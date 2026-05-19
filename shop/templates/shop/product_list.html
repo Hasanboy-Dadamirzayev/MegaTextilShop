@@ -1,0 +1,326 @@
+{% extends 'shop/base.html' %}
+
+{% block content %}
+<div class="container">
+    <div class="row">
+        <!-- Sidebar - Filter -->
+        <div class="col-lg-3 mb-4">
+            <div class="card border-0 shadow-sm rounded-4 p-3">
+                <h5 class="mb-3"><i class="fas fa-filter me-2"></i>Filterlar</h5>
+
+                <form method="get" id="filterForm">
+                    <!-- Kategoriya -->
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Kategoriya</label>
+                        <select name="category" class="form-select" id="categorySelect">
+                            <option value="">Barchasi</option>
+                            {% for cat in categories %}
+                            <option value="{{ cat.slug }}" {% if current_category.slug == cat.slug %}selected{% endif %}>
+                                {{ cat.name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Narx oralig'i -->
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Narx oralig'i</label>
+                        <div class="row g-2">
+                            <div class="col-6">
+                                <input type="number" name="min_price" class="form-control" placeholder="Min" value="{{ min_price|default:'' }}">
+                            </div>
+                            <div class="col-6">
+                                <input type="number" name="max_price" class="form-control" placeholder="Max" value="{{ max_price|default:'' }}">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tartiblash -->
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Tartiblash</label>
+                        <select name="sort" class="form-select" id="sortSelect">
+                            <option value="newest" {% if sort == 'newest' %}selected{% endif %}>Eng yangi</option>
+                            <option value="price_asc" {% if sort == 'price_asc' %}selected{% endif %}>Narxi o'sish</option>
+                            <option value="price_desc" {% if sort == 'price_desc' %}selected{% endif %}>Narxi kamayish</option>
+                            <option value="name_asc" {% if sort == 'name_asc' %}selected{% endif %}>Nomi bo'yicha (A-Z)</option>
+                        </select>
+                    </div>
+
+                    <!-- Qidiruv -->
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Qidiruv</label>
+                        <input type="text" name="q" class="form-control" placeholder="Mahsulot nomi..." value="{{ search_query|default:'' }}">
+                    </div>
+
+                    <button type="submit" class="btn-primary-custom w-100">
+                        <i class="fas fa-search me-2"></i>Filterlash
+                    </button>
+                    <a href="{% url 'shop:product_list' %}" class="btn-outline-custom w-100 mt-2 text-center">
+                        <i class="fas fa-times me-2"></i>Tozalash
+                    </a>
+                </form>
+            </div>
+        </div>
+
+        <!-- Products -->
+        <div class="col-lg-9">
+            <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+                <h3 style="color: #1a2e1f;">
+                    {% if current_category %}
+                        {{ current_category.name }}
+                    {% else %}
+                        Barcha mahsulotlar
+                    {% endif %}
+                </h3>
+                <span class="text-muted">{{ products|length }} ta mahsulot</span>
+            </div>
+
+            <!-- Aktiv filterlar -->
+            {% if search_query or min_price or max_price or current_category %}
+            <div class="mb-3 d-flex flex-wrap gap-2">
+                {% if current_category %}
+                <span class="badge bg-success p-2">
+                    Kategoriya: {{ current_category.name }}
+                    <a href="?{% for key, value in request.GET.items %}{% if key != 'category' %}{{ key }}={{ value }}&{% endif %}{% endfor %}" class="text-white ms-1">&times;</a>
+                </span>
+                {% endif %}
+                {% if search_query %}
+                <span class="badge bg-success p-2">
+                    Qidiruv: "{{ search_query }}"
+                    <a href="?{% for key, value in request.GET.items %}{% if key != 'q' %}{{ key }}={{ value }}&{% endif %}{% endfor %}" class="text-white ms-1">&times;</a>
+                </span>
+                {% endif %}
+                {% if min_price %}
+                <span class="badge bg-success p-2">
+                    Min narx: {{ min_price }}
+                    <a href="?{% for key, value in request.GET.items %}{% if key != 'min_price' %}{{ key }}={{ value }}&{% endif %}{% endfor %}" class="text-white ms-1">&times;</a>
+                </span>
+                {% endif %}
+                {% if max_price %}
+                <span class="badge bg-success p-2">
+                    Max narx: {{ max_price }}
+                    <a href="?{% for key, value in request.GET.items %}{% if key != 'max_price' %}{{ key }}={{ value }}&{% endif %}{% endfor %}" class="text-white ms-1">&times;</a>
+                </span>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            {% if products %}
+            <div class="row g-4">
+                {% for product in products %}
+                <div class="col-md-6 col-lg-4">
+                    <div class="card h-100 border-0 shadow-sm rounded-4 product-card">
+                        <a href="{{ product.get_absolute_url }}" class="text-decoration-none">
+                            {% if product.image %}
+                            <img src="{{ product.image.url }}" class="card-img-top rounded-top-4" alt="{{ product.name }}" style="height: 200px; object-fit: cover;">
+                            {% else %}
+                            <div class="bg-light rounded-top-4 d-flex align-items-center justify-content-center" style="height: 200px;">
+                                <i class="fas fa-image fa-4x text-muted"></i>
+                            </div>
+                            {% endif %}
+                            <div class="card-body">
+                                <div class="mb-2">
+                                    <span class="badge bg-light text-dark">{{ product.category.name }}</span>
+                                </div>
+                                <h6 class="card-title text-dark mb-2">{{ product.name|truncatechars:50 }}</h6>
+                                <div class="d-flex align-items-center gap-2 flex-wrap">
+                                    <span class="fw-bold text-success fs-5">{{ product.price|floatformat:0 }} so'm</span>
+                                    {% if product.old_price %}
+                                    <span class="text-muted text-decoration-line-through small">{{ product.old_price|floatformat:0 }} so'm</span>
+                                    <span class="badge bg-danger">{{ product.discount_percent }}%</span>
+                                    {% endif %}
+                                </div>
+                                {% if product.stock < 5 and product.stock > 0 %}
+                                <small class="text-warning d-block mt-1">⚠️ Qolgani {{ product.stock }} dona</small>
+                                {% elif product.stock == 0 %}
+                                <small class="text-danger d-block mt-1">❌ Soni tugagan</small>
+                                {% endif %}
+                            </div>
+                        </a>
+                        <div class="card-footer bg-transparent border-0 pb-3">
+                            <div class="d-flex gap-2">
+                                {% if product.stock > 0 %}
+                                <button class="btn-primary-custom flex-grow-1 add-to-cart-btn" data-product-id="{{ product.id }}" style="padding: 0.5rem;">
+                                    <i class="fas fa-cart-plus me-1"></i> Savatga
+                                </button>
+                                <button class="btn-outline-custom buy-now-btn" data-product-id="{{ product.id }}" style="padding: 0.5rem;">
+                                    <i class="fas fa-bolt me-1"></i> Sotib olish
+                                </button>
+                                {% else %}
+                                <button class="btn-secondary-custom w-100" disabled style="padding: 0.5rem;">
+                                    <i class="fas fa-times-circle me-2"></i> Soni tugagan
+                                </button>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-box-open fa-4x text-muted mb-3"></i>
+                <h4 class="text-muted">Hech qanday mahsulot topilmadi</h4>
+                <p class="text-muted">Filterlarni o'zgartirib qayta urinib ko'ring</p>
+                <a href="{% url 'shop:product_list' %}" class="btn-primary-custom mt-3">Barcha mahsulotlar</a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<style>
+    .product-card {
+        transition: all 0.2s ease;
+    }
+    .product-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 12px 24px rgba(0,0,0,0.1) !important;
+    }
+    .btn-secondary-custom {
+        background: #e0e0e0;
+        border: none;
+        border-radius: 12px;
+        font-weight: 600;
+        color: #666;
+    }
+    .badge a {
+        text-decoration: none;
+    }
+    .badge a:hover {
+        text-decoration: none;
+        opacity: 0.8;
+    }
+</style>
+
+<script>
+    // Form submit bo'lganda loading ko'rsatish
+    document.getElementById('filterForm').addEventListener('submit', function() {
+        showLoading();
+    });
+
+    // Selectlar o'zgarganda avtomatik submit
+    document.getElementById('categorySelect').addEventListener('change', function() {
+        document.getElementById('filterForm').submit();
+    });
+
+    document.getElementById('sortSelect').addEventListener('change', function() {
+        document.getElementById('filterForm').submit();
+    });
+
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    function showLoading() {
+        const loading = document.getElementById('loading');
+        if (loading) {
+            loading.classList.add('show');
+        }
+    }
+
+    function hideLoading() {
+        const loading = document.getElementById('loading');
+        if (loading) {
+            loading.classList.remove('show');
+        }
+    }
+
+    function showToast(message, type) {
+        var toast = document.createElement('div');
+        toast.className = 'toast-message';
+        toast.innerHTML = message;
+        if (type === 'success') {
+            toast.style.backgroundColor = '#2e7d32';
+        } else if (type === 'error') {
+            toast.style.backgroundColor = '#dc3545';
+        } else {
+            toast.style.backgroundColor = '#17a2b8';
+        }
+        document.body.appendChild(toast);
+        setTimeout(function() {
+            toast.style.opacity = '0';
+            toast.style.transition = 'all 0.3s ease';
+            setTimeout(function() {
+                toast.remove();
+            }, 300);
+        }, 3000);
+    }
+
+    // Savatga qo'shish
+    document.querySelectorAll('.add-to-cart-btn').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            let productId = this.dataset.productId;
+            let $btn = this;
+
+            fetch("{% url 'shop:cart_add' %}", {
+                method: "POST",
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken'),
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({product_id: productId, quantity: 1})
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const cartCount = document.getElementById('cartCount');
+                    if (cartCount) cartCount.innerText = data.total_items;
+                    showToast(data.message, 'success');
+                    $btn.innerHTML = '<i class="fas fa-check me-1"></i> Qo\'shildi';
+                    setTimeout(() => {
+                        $btn.innerHTML = '<i class="fas fa-cart-plus me-1"></i> Savatga';
+                    }, 2000);
+                } else {
+                    showToast(data.message, 'error');
+                }
+            })
+            .catch(error => {
+                showToast('Xatolik yuz berdi', 'error');
+            });
+        });
+    });
+
+    // Sotib olish tugmasi
+    document.querySelectorAll('.buy-now-btn').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            let productId = this.dataset.productId;
+
+            fetch("{% url 'shop:cart_add' %}", {
+                method: "POST",
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken'),
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({product_id: productId, quantity: 1})
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const cartCount = document.getElementById('cartCount');
+                    if (cartCount) cartCount.innerText = data.total_items;
+                    window.location.href = "{% url 'shop:checkout' %}";
+                } else {
+                    showToast(data.message, 'error');
+                }
+            })
+            .catch(error => {
+                showToast('Xatolik yuz berdi', 'error');
+            });
+        });
+    });
+</script>
+{% endblock %}
