@@ -1,0 +1,55 @@
+{% extends 'shop/base.html' %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-5">
+            <div class="card border-0 shadow-sm rounded-4">
+                <div class="card-body p-5">
+                    <div class="text-center mb-4">
+                        <i class="fab fa-telegram fa-3x" style="color: #0088cc;"></i>
+                        <h3 class="mt-3" style="color: #1a2e1f;">Telegram Bot</h3>
+                        <p class="text-muted">{{ phone_number }} raqami uchun</p>
+                    </div>
+
+                    <div class="alert alert-info mb-4">
+                        <i class="fab fa-telegram me-2"></i>
+                        <strong>Chat ID qanday olinadi?</strong><br>
+                        <ol class="mt-2 mb-0 small">
+                            <li>Telegram'da <strong>@{{ bot_username }}</strong> botni qidiring</li>
+                            <li>Botga <strong>/start</strong> buyrug'ini yuboring</li>
+                            <li>Bot sizga chat ID ni yuboradi <code>(masalan: 123456789)</code></li>
+                            <li>Shu raqamni quyidagi maydonga kiriting</li>
+                        </ol>
+                    </div>
+
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label class="form-label">Telegram Chat ID</label>
+                            {{ form.telegram_chat_id }}
+                            <small class="text-muted d-block mt-1">
+                                <i class="fas fa-info-circle me-1"></i>
+                                Bot yuborgan raqamni kiriting (faqat raqamlar)
+                            </small>
+                        </div>
+                        <button type="submit" class="btn-primary-custom w-100 py-2">
+                            <i class="fab fa-telegram me-2"></i> Tasdiqlash va kod olish
+                        </button>
+                    </form>
+
+                    <div class="text-center mt-4">
+                        <a href="https://t.me/{{ bot_username }}" target="_blank" class="text-decoration-none" style="color: #2e7d32;">
+                            <i class="fab fa-telegram me-1"></i> Botni ochish
+                        </a>
+                        <span class="mx-2">|</span>
+                        <a href="{% url 'accounts:register' %}" class="text-decoration-none" style="color: #2e7d32;">
+                            <i class="fas fa-arrow-left me-1"></i> Orqaga
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

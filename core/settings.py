@@ -5,6 +5,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = 'django-insecure-your-secret-key'
 
+
+
+TELEGRAM_BOT_TOKEN = '8860253157:AAH8seuBA_N65t9SZt_sNrRNczL6jV4w31g'
+TELEGRAM_BOT_USERNAME = 'megasavdohub_bot'
+
+
 DEBUG = True
 
 ALLOWED_HOSTS = []
@@ -18,7 +24,16 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'accounts',
     'shop',
+    'bot',
 ]
+
+# Cache sozlamalari (OTP kodlarni saqlash uchun)
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'unique-snowflake',
+    }
+}
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',

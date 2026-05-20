@@ -1,6 +1,5 @@
 from django import forms
 from django.contrib.auth.forms import AuthenticationForm
-from .models import User
 
 
 class PhoneNumberForm(forms.Form):
@@ -35,7 +34,7 @@ class SetPasswordForm(forms.Form):
     password = forms.CharField(
         widget=forms.PasswordInput(attrs={
             'class': 'form-control',
-            'placeholder': 'Parolingizni kiriting'
+            'placeholder': 'Parolingizni kiriting (kamida 6 belgi)'
         })
     )
     confirm_password = forms.CharField(

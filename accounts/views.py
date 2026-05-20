@@ -4,6 +4,8 @@ from django.contrib.auth import login, authenticate
 from django.contrib import messages
 from django.utils import timezone
 from datetime import timedelta
+from django.conf import settings
+from django.core.cache import cache
 from .models import User, OTP
 from .forms import PhoneNumberForm, OTPVerificationForm, SetPasswordForm, LoginForm
 
@@ -13,10 +15,18 @@ def generate_otp():
 
 
 def register_view(request):
+    """1-bosqich: Telefon raqam kiritish"""
+
+    if request.user.is_authenticated:
+        return redirect('shop:index')
+
     if request.method == 'POST':
         form = PhoneNumberForm(request.POST)
         if form.is_valid():
             phone_number = form.cleaned_data['phone_number']
+
+            if not phone_number.startswith('+'):
+                phone_number = '+' + phone_number
 
             user, created = User.objects.get_or_create(
                 phone_number=phone_number,
@@ -27,70 +37,128 @@ def register_view(request):
                 messages.error(request, 'Bu raqam allaqachon ro\'yxatdan o\'tgan')
                 return redirect('accounts:login')
 
-            OTP.objects.filter(user=user, created_at__lt=timezone.now() - timedelta(minutes=5)).delete()
-
-            otp_code = generate_otp()
-            otp = OTP.objects.create(user=user, code=otp_code)
-
-            print(f"\n{'='*50}")
-            print(f"📱 {phone_number} uchun OTP kodi: {otp_code}")
-            print(f"⏰ Kod 5 daqiqa amal qiladi")
-            print(f"{'='*50}\n")
-
+            # Sessionga telefon raqamni saqlash
             request.session['registration_phone'] = phone_number
 
-            messages.success(request, f'{phone_number} raqamiga kod yuborildi (Terminalda ko\'ring)')
-            return redirect('accounts:verify_otp')
+            # Vaqtinchalik token yaratish
+            import uuid
+            temp_token = str(uuid.uuid4())
+            request.session['temp_token'] = temp_token
+
+            # Cache ga vaqtinchalik ma'lumotni saqlash (10 daqiqa)
+            cache.set(f'pending_registration_{temp_token}', {
+                'phone_number': phone_number,
+                'step': 'waiting_for_code'
+            }, timeout=600)
+
+            messages.success(request, f'Telefon raqam qabul qilindi. Bot orqali kod oling!')
+            return redirect('accounts:get_telegram_code')
     else:
         form = PhoneNumberForm()
 
     return render(request, 'accounts/register.html', {'form': form})
 
 
-def verify_otp_view(request):
+def get_telegram_code_view(request):
+    """2-bosqich: Bot orqali kod olish sahifasi"""
+
     phone_number = request.session.get('registration_phone')
-    if not phone_number:
+    temp_token = request.session.get('temp_token')
+
+    if not phone_number or not temp_token:
         messages.error(request, 'Avval telefon raqamni kiriting')
         return redirect('accounts:register')
 
-    try:
-        user = User.objects.get(phone_number=phone_number)
-    except User.DoesNotExist:
-        messages.error(request, 'Foydalanuvchi topilmadi')
+    context = {
+        'bot_username': settings.TELEGRAM_BOT_USERNAME,
+        'temp_token': temp_token,
+        'phone_number': phone_number
+    }
+    return render(request, 'accounts/get_telegram_code.html', context)
+
+
+def verify_telegram_code_view(request, token):
+    """3-bosqich: Telegramdan kelgan kodni tekshirish"""
+
+    # Cache dan ma'lumotni olish
+    pending_data = cache.get(f'pending_registration_{token}')
+
+    if not pending_data:
+        messages.error(request, 'Sessiya tugagan. Qaytadan urinib ko\'ring!')
         return redirect('accounts:register')
+
+    phone_number = pending_data.get('phone_number')
 
     if request.method == 'POST':
         form = OTPVerificationForm(request.POST)
         if form.is_valid():
             otp_code = form.cleaned_data['otp_code']
 
+            # OTP modeldan kodni tekshirish
             try:
-                otp = OTP.objects.get(
-                    user=user,
+                otp = OTP.objects.filter(
                     code=otp_code,
                     is_used=False,
                     created_at__gte=timezone.now() - timedelta(minutes=5)
-                )
+                ).first()
 
-                otp.is_used = True
-                otp.save()
+                if otp and otp.user.phone_number == phone_number:
+                    # Kod to'g'ri
+                    otp.is_used = True
+                    otp.save()
 
-                request.session['otp_verified'] = True
+                    # Cache dan tozalash
+                    cache.delete(f'pending_registration_{token}')
 
-                messages.success(request, 'Kod tasdiqlandi! Endi parolingizni belgilang.')
-                return redirect('accounts:set_password')
+                    request.session['registration_phone'] = phone_number
+                    request.session['otp_verified'] = True
 
-            except OTP.DoesNotExist:
-                messages.error(request, 'Noto\'g\'ri yoki eskirgan kod')
+                    messages.success(request, 'Kod tasdiqlandi! Endi parolingizni belgilang.')
+                    return redirect('accounts:set_password')
+                else:
+                    messages.error(request, 'Noto\'g\'ri yoki eskirgan kod! Botdan yangi kod oling.')
+
+            except Exception as e:
+                print(f"Kod tekshirish xatolik: {e}")
+                messages.error(request, 'Xatolik yuz berdi. Qaytadan urinib ko\'ring!')
+        else:
+            messages.error(request, 'Iltimos, 6 xonali kodni kiriting!')
     else:
         form = OTPVerificationForm()
 
-    return render(request, 'accounts/verify_otp.html', {'form': form, 'phone_number': phone_number})
+    context = {
+        'form': form,
+        'phone_number': phone_number,
+        'token': token,
+        'bot_username': settings.TELEGRAM_BOT_USERNAME,
+    }
+    return render(request, 'accounts/verify_telegram_code.html', context)
+
+
+def resend_telegram_code_view(request, token):
+    """Kodni qayta yuborish - bot orqali"""
+
+    pending_data = cache.get(f'pending_registration_{token}')
+    if not pending_data:
+        messages.error(request, 'Sessiya tugagan. Qaytadan urinib ko\'ring!')
+        return redirect('accounts:register')
+
+    phone_number = pending_data.get('phone_number')
+
+    messages.info(request, f'Iltimos, Telegram botga qayta murojaat qiling: @{settings.TELEGRAM_BOT_USERNAME}')
+    return redirect('accounts:verify_telegram_code', token=token)
 
 
 def set_password_view(request):
+    """4-bosqich: Parol o'rnatish"""
+
+    # Agar allaqachon login qilgan bo'lsa
+    if request.user.is_authenticated:
+        return redirect('shop:index')
+
+    # OTP tasdiqlanganligini tekshirish
     if not request.session.get('otp_verified'):
-        messages.error(request, 'Avval telefon raqamni tasdiqlang!')
+        messages.error(request, 'Avval kodni tasdiqlang!')
         return redirect('accounts:register')
 
     phone_number = request.session.get('registration_phone')
@@ -107,25 +175,45 @@ def set_password_view(request):
         if form.is_valid():
             password = form.cleaned_data['password']
 
+            # Parolni o'rnatish
             user.set_password(password)
             user.is_active = True
             user.save()
 
-            login(request, user)
+            # Avtomatik login qilish
+            from django.contrib.auth import authenticate, login
 
-            del request.session['registration_phone']
-            del request.session['otp_verified']
+            # Foydalanuvchini authenticate qilish
+            authenticated_user = authenticate(request, username=phone_number, password=password)
 
-            messages.success(request, f"✅ Muvaffaqiyatli ro'yxatdan o'tdingiz!")
+            if authenticated_user is not None:
+                login(request, authenticated_user)
+                print(f"✅ Foydalanuvchi login qildi: {phone_number}")
+            else:
+                print(f"❌ Authenticate bo'lmadi: {phone_number}")
+                # Agar authenticate ishlamasa, to'g'ridan-to'g'ri login qilish
+                login(request, user)
+
+            # Sessionni tozalash
+            request.session.flush()
+
+            # Yangi session yaratish va foydalanuvchini qayta login qilish
+            from django.contrib.auth import login as auth_login
+            auth_login(request, user)
+
+            messages.success(request, f"✅ Muvaffaqiyatli ro'yxatdan o'tdingiz! Xush kelibsiz, {user.phone_number}!")
+
+            # Do'konning bosh sahifasiga yo'naltirish
             return redirect('shop:index')
+        else:
+            messages.error(request, 'Parollar mos kelmadi yoki parol juda qisqa!')
     else:
         form = SetPasswordForm()
 
-    return render(request, 'accounts/set_password.html', {'form': form, 'phone_number': phone_number})
-
-
-
-from shop.views import merge_session_cart_to_user_cart
+    return render(request, 'accounts/set_password.html', {
+        'form': form,
+        'phone_number': phone_number
+    })
 
 
 def login_view(request):
@@ -141,10 +229,6 @@ def login_view(request):
 
             if user is not None and user.is_active:
                 login(request, user)
-
-                # Session savatni user savatiga qo'shish
-                merge_session_cart_to_user_cart(request, user)
-
                 messages.success(request, f"👋 Xush kelibsiz, {user.phone_number}!")
                 return redirect('shop:index')
             else:
@@ -153,12 +237,6 @@ def login_view(request):
         form = LoginForm()
 
     return render(request, 'accounts/login.html', {'form': form})
-
-
-def home_view(request):
-    if not request.user.is_authenticated:
-        return redirect('accounts:login')
-    return redirect('shop:index')
 
 
 def logout_view(request):

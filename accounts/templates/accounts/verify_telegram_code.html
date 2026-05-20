@@ -7,11 +7,11 @@
             <div class="card border-0 shadow-sm rounded-4">
                 <div class="card-body p-5">
                     <div class="text-center mb-4">
-                        <i class="fas fa-shield-alt fa-3x" style="color: #2e7d32;"></i>
-                        <h3 class="mt-3" style="color: #1a2e1f;">Kodni tasdiqlash</h3>
-                        <p class="text-muted">{{ phone_number }} raqamiga kod yuborildi</p>
+                        <i class="fas fa-key fa-3x" style="color: #2e7d32;"></i>
+                        <h3 class="mt-3" style="color: #1a2e1f;">Tasdiqlash kodini kiriting</h3>
+                        <p class="text-muted">{{ phone_number }} raqami uchun</p>
                     </div>
-
+                    
                     {% if messages %}
                         {% for message in messages %}
                             <div class="alert alert-{% if message.tags == 'success' %}success{% elif message.tags == 'error' %}danger{% else %}info{% endif %} alert-dismissible fade show" role="alert">
@@ -20,26 +20,33 @@
                             </div>
                         {% endfor %}
                     {% endif %}
-
-                    <div class="alert alert-info mb-4">
-                        <i class="fas fa-terminal me-2"></i>
-                        <strong>Terminalni tekshiring!</strong> Tasdiqlash kodi terminalda chiqarilgan.
+                    
+                    <div class="alert alert-success mb-4">
+                        <i class="fab fa-telegram me-2"></i>
+                        <strong>Botdan kodni olmadingizmi?</strong><br>
+                        <a href="https://t.me/{{ bot_username }}" target="_blank">@{{ bot_username }}</a> botiga o'ting va kontakt ulashing!
                     </div>
-
+                    
                     <form method="post">
                         {% csrf_token %}
                         <div class="mb-3">
-                            <label class="form-label">Tasdiqlash kodi</label>
+                            <label class="form-label">6 xonali kod</label>
                             {{ form.otp_code }}
                         </div>
                         <button type="submit" class="btn-primary-custom w-100 py-2">
                             <i class="fas fa-check-circle me-2"></i> Tasdiqlash
                         </button>
                     </form>
-
+                    
                     <div class="text-center mt-4">
-                        <a href="{% url 'accounts:resend_otp' %}" class="text-decoration-none" style="color: #2e7d32;">
+                        {% if can_resend %}
+                        <a href="{% url 'accounts:resend_telegram_code' token=token %}" class="text-decoration-none" style="color: #2e7d32;">
                             <i class="fas fa-redo me-1"></i> Kodni qayta yuborish
+                        </a>
+                        {% endif %}
+                        <span class="mx-2">|</span>
+                        <a href="https://t.me/{{ bot_username }}" target="_blank" class="text-decoration-none" style="color: #0088cc;">
+                            <i class="fab fa-telegram me-1"></i> Botga o'tish
                         </a>
                         <span class="mx-2">|</span>
                         <a href="{% url 'accounts:register' %}" class="text-decoration-none" style="color: #2e7d32;">

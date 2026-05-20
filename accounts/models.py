@@ -37,11 +37,13 @@ class User(AbstractBaseUser, PermissionsMixin):
         return self.phone_number
 
 
+
 class OTP(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     code = models.CharField(max_length=6)
     created_at = models.DateTimeField(auto_now_add=True)
     is_used = models.BooleanField(default=False)
+    telegram_chat_id = models.CharField(max_length=100, blank=True, null=True)  # Bu maydon muhim!
 
     def __str__(self):
         return f"{self.user.phone_number} - {self.code}"

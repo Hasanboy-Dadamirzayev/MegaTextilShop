@@ -101,6 +101,8 @@ class CartItem(models.Model):
         return self.product.price * self.quantity
 
 
+
+
 class Wishlist(models.Model):
     """Yoqtirilgan mahsulotlar"""
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='wishlists', verbose_name="Foydalanuvchi")
