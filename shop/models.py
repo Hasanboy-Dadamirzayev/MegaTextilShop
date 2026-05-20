@@ -101,6 +101,21 @@ class CartItem(models.Model):
         return self.product.price * self.quantity
 
 
+class Wishlist(models.Model):
+    """Yoqtirilgan mahsulotlar"""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='wishlists', verbose_name="Foydalanuvchi")
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='wishlists', verbose_name="Mahsulot")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Qo'shilgan vaqt")
+
+    class Meta:
+        verbose_name = "Yoqtirilgan mahsulot"
+        verbose_name_plural = "Yoqtirilgan mahsulotlar"
+        unique_together = ['user', 'product']  # Bir foydalanuvchi bir mahsulotni bir marta yoqtirishi mumkin
+
+    def __str__(self):
+        return f"{self.user.phone_number} - {self.product.name}"
+
+
 class Order(models.Model):
     """Buyurtma"""
     STATUS_CHOICES = [

@@ -138,13 +138,16 @@
                             </div>
                         </a>
                         <div class="card-footer bg-transparent border-0 pb-3">
-                            <div class="d-flex gap-2">
+                            <div class="d-flex gap-2" style="flex-wrap: nowrap;">
                                 {% if product.stock > 0 %}
-                                <button class="btn-primary-custom flex-grow-1 add-to-cart-btn" data-product-id="{{ product.id }}" style="padding: 0.5rem;">
+                                <button class="btn-primary-custom add-to-cart-btn" data-product-id="{{ product.id }}" style="padding: 0.5rem; flex: 1;">
                                     <i class="fas fa-cart-plus me-1"></i> Savatga
                                 </button>
-                                <button class="btn-outline-custom buy-now-btn" data-product-id="{{ product.id }}" style="padding: 0.5rem;">
+                                <button class="btn-outline-custom buy-now-btn" data-product-id="{{ product.id }}" style="padding: 0.5rem; flex: 1;">
                                     <i class="fas fa-bolt me-1"></i> Sotib olish
+                                </button>
+                                <button class="btn-outline-custom wishlist-btn" data-product-id="{{ product.id }}" style="padding: 0.5rem; width: 42px; {% if product.id in wishlisted_ids %}background: #e91e63; color: white; border-color: #e91e63;{% endif %}">
+                                    <i class="fas fa-heart"></i>
                                 </button>
                                 {% else %}
                                 <button class="btn-secondary-custom w-100" disabled style="padding: 0.5rem;">
@@ -190,6 +193,20 @@
     .badge a:hover {
         text-decoration: none;
         opacity: 0.8;
+    }
+    .wishlist-btn {
+        transition: all 0.2s ease;
+    }
+    .wishlist-btn:hover {
+        transform: scale(1.05);
+    }
+    @media (max-width: 576px) {
+        .d-flex.gap-2 {
+            flex-wrap: wrap !important;
+        }
+        .add-to-cart-btn, .buy-now-btn {
+            flex: auto !important;
+        }
     }
 </style>
 
@@ -315,6 +332,50 @@
                     window.location.href = "{% url 'shop:checkout' %}";
                 } else {
                     showToast(data.message, 'error');
+                }
+            })
+            .catch(error => {
+                showToast('Xatolik yuz berdi', 'error');
+            });
+        });
+    });
+
+    // Yoqtirish tugmasi
+    document.querySelectorAll('.wishlist-btn').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            let productId = this.dataset.productId;
+            let $btn = $(this);
+
+            fetch("{% url 'shop:wishlist_add' %}", {
+                method: "POST",
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken'),
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({product_id: productId})
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    if (data.is_added) {
+                        $btn.css({'background': '#e91e63', 'color': 'white', 'border-color': '#e91e63'});
+                        showToast(data.message, 'success');
+                    } else {
+                        $btn.css({'background': 'transparent', 'color': '#2e7d32', 'border-color': '#2e7d32'});
+                        showToast(data.message, 'success');
+                    }
+                    const wishlistCount = document.getElementById('wishlistCount');
+                    if (wishlistCount) {
+                        wishlistCount.innerText = data.total_wishlist;
+                    }
+                } else {
+                    if (data.redirect) {
+                        window.location.href = "{% url 'accounts:login' %}";
+                    } else {
+                        showToast(data.message, 'error');
+                    }
                 }
             })
             .catch(error => {

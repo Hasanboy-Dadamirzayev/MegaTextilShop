@@ -76,16 +76,20 @@
             </div>
 
             {% if product.stock > 0 %}
-            <div class="d-flex gap-3 align-items-center mb-4">
-                <div class="d-flex align-items-center border rounded-3 overflow-hidden">
+            <div class="d-flex gap-3 align-items-center mb-4" style="flex-wrap: nowrap;">
+                <div class="d-flex align-items-center border rounded-3 overflow-hidden" style="flex-shrink: 0;">
                     <button class="btn btn-light border-0 px-3" type="button" onclick="decrementQuantity()">-</button>
                     <input type="number" id="quantity" value="1" min="1" max="{{ product.stock }}" class="form-control text-center border-0" style="width: 60px;">
                     <button class="btn btn-light border-0 px-3" type="button" onclick="incrementQuantity()">+</button>
                 </div>
-                <button class="btn-primary-custom px-4 py-2" id="addToCartBtn" type="button">
+                <button class="btn-primary-custom px-4 py-2" id="addToCartBtn" type="button" style="flex-shrink: 0;">
                     <i class="fas fa-cart-plus me-2"></i> Savatga qo'shish
                 </button>
-                <button class="btn-outline-custom px-4 py-2" id="buyNowBtn" type="button">
+                <button class="btn-outline-custom wishlist-btn px-4 py-2" data-product-id="{{ product.id }}" type="button" style="flex-shrink: 0; {% if is_wishlisted %}background: #e91e63; color: white; border-color: #e91e63;{% endif %}">
+                    <i class="fas fa-heart me-2"></i>
+                    <span class="wishlist-text">{% if is_wishlisted %}Yoqtirilgan{% else %}Yoqtirish{% endif %}</span>
+                </button>
+                <button class="btn-outline-custom px-4 py-2" id="buyNowBtn" type="button" style="flex-shrink: 0;">
                     <i class="fas fa-bolt me-2"></i> Sotib olish
                 </button>
             </div>
@@ -168,6 +172,20 @@
         border-radius: 12px;
         font-weight: 600;
         color: #666;
+    }
+    .wishlist-btn {
+        transition: all 0.2s ease;
+    }
+    .wishlist-btn:hover {
+        transform: scale(1.02);
+    }
+    @media (max-width: 768px) {
+        .d-flex.gap-3 {
+            flex-wrap: wrap !important;
+        }
+        .d-flex.gap-3 button {
+            width: auto !important;
+        }
     }
 </style>
 
@@ -261,7 +279,6 @@
         let quantity = parseInt(document.getElementById('quantity').value);
         let productId = {{ product.id }};
 
-        // Avval mahsulotni savatga qo'shamiz
         fetch("{% url 'shop:cart_add' %}", {
             method: "POST",
             headers: {
@@ -274,10 +291,53 @@
         .then(data => {
             if (data.success) {
                 document.getElementById('cartCount').innerText = data.total_items;
-                // So'ngra checkout sahifasiga o'tamiz
                 window.location.href = "{% url 'shop:checkout' %}";
             } else {
                 showToast(data.message, 'error');
+            }
+        })
+        .catch(error => {
+            showToast('Xatolik yuz berdi', 'error');
+        });
+    });
+
+    // Yoqtirish tugmasi
+    document.querySelector('.wishlist-btn')?.addEventListener('click', function(e) {
+        e.preventDefault();
+        let productId = this.dataset.productId;
+        let $btn = $(this);
+        let $text = $btn.find('.wishlist-text');
+
+        fetch("{% url 'shop:wishlist_add' %}", {
+            method: "POST",
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({product_id: productId})
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                if (data.is_added) {
+                    $btn.css({'background': '#e91e63', 'color': 'white', 'border-color': '#e91e63'});
+                    $text.text('Yoqtirilgan');
+                    showToast(data.message, 'success');
+                } else {
+                    $btn.css({'background': 'transparent', 'color': '#2e7d32', 'border-color': '#2e7d32'});
+                    $text.text('Yoqtirish');
+                    showToast(data.message, 'success');
+                }
+                const wishlistCount = document.getElementById('wishlistCount');
+                if (wishlistCount) {
+                    wishlistCount.innerText = data.total_wishlist;
+                }
+            } else {
+                if (data.redirect) {
+                    window.location.href = "{% url 'accounts:login' %}";
+                } else {
+                    showToast(data.message, 'error');
+                }
             }
         })
         .catch(error => {

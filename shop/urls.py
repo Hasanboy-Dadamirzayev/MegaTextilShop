@@ -19,4 +19,10 @@ urlpatterns = [
     path('checkout/', views.checkout_view, name='checkout'),
     path('order/success/<int:order_id>/', views.order_success_view, name='order_success'),
     path('my-orders/', views.my_orders_view, name='my_orders'),
+
+    # wishlist
+    path('wishlist/', views.wishlist_view, name='wishlist'),
+    path('wishlist/add/', views.wishlist_add_view, name='wishlist_add'),
+    path('wishlist/remove/<int:product_id>/', views.wishlist_remove_view, name='wishlist_remove'),
+    path('wishlist/status/', views.get_wishlist_status, name='wishlist_status'),
 ]

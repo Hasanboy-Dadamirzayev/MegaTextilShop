@@ -4,8 +4,8 @@ from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.contrib import messages
 from django.urls import reverse
-from .models import Category, Product, Cart, CartItem, Order, OrderItem, SessionCart, SessionCartItem
 from .forms import OrderForm
+from .models import Category, Product, Cart, CartItem, Order, OrderItem, SessionCart, SessionCartItem, Wishlist
 
 
 def get_or_create_session_cart(request):
@@ -54,6 +54,93 @@ def get_cart_total_items(request):
         return session_cart.total_items
 
 
+def get_wishlist_count(request):
+    """Yoqtirilgan mahsulotlar sonini qaytarish"""
+    if request.user.is_authenticated:
+        return Wishlist.objects.filter(user=request.user).count()
+    return 0
+
+
+def wishlist_add_view(request):
+    """Mahsulotni yoqtirilganlarga qo'shish - AJAX"""
+    if not request.user.is_authenticated:
+        return JsonResponse({
+            'success': False,
+            'message': 'Yoqtirilgan mahsulotlarga qo\'shish uchun tizimga kiring!',
+            'redirect': 'accounts:login'
+        })
+
+    if request.method == 'POST':
+        data = json.loads(request.body)
+        product_id = data.get('product_id')
+
+        product = get_object_or_404(Product, id=product_id, is_available=True)
+
+        wishlist_item, created = Wishlist.objects.get_or_create(
+            user=request.user,
+            product=product
+        )
+
+        if created:
+            message = f'{product.name} yoqtirilganlarga qo\'shildi'
+            is_added = True
+        else:
+            wishlist_item.delete()
+            message = f'{product.name} yoqtirilganlardan o\'chirildi'
+            is_added = False
+
+        total_wishlist = Wishlist.objects.filter(user=request.user).count()
+
+        return JsonResponse({
+            'success': True,
+            'message': message,
+            'is_added': is_added,
+            'total_wishlist': total_wishlist
+        })
+
+    return JsonResponse({'success': False, 'message': 'Xatolik yuz berdi'})
+
+
+def wishlist_view(request):
+    """Yoqtirilgan mahsulotlar sahifasi"""
+    if not request.user.is_authenticated:
+        messages.warning(request, 'Yoqtirilgan mahsulotlaringizni ko\'rish uchun tizimga kiring!')
+        return redirect('accounts:login')
+
+    wishlist_items = Wishlist.objects.filter(user=request.user).order_by('-created_at')
+
+    context = {
+        'wishlist_items': wishlist_items,
+        'cart_total_items': get_cart_total_items(request),
+        'wishlist_count': get_wishlist_count(request),
+    }
+    return render(request, 'shop/wishlist.html', context)
+
+
+def wishlist_remove_view(request, product_id):
+    """Yoqtirilgan mahsulotni o'chirish"""
+    if not request.user.is_authenticated:
+        return redirect('accounts:login')
+
+    wishlist_item = get_object_or_404(Wishlist, user=request.user, product_id=product_id)
+    wishlist_item.delete()
+    messages.success(request, 'Mahsulot yoqtirilganlardan o\'chirildi')
+    return redirect('shop:wishlist')
+
+
+def get_wishlist_status(request):
+    """Mahsulotning yoqtirilganlar ro'yxatida borligini tekshirish (AJAX)"""
+    if not request.user.is_authenticated:
+        return JsonResponse({'success': False, 'is_wishlisted': False})
+
+    product_id = request.GET.get('product_id')
+    if product_id:
+        is_wishlisted = Wishlist.objects.filter(user=request.user, product_id=product_id).exists()
+        return JsonResponse({'success': True, 'is_wishlisted': is_wishlisted})
+
+    return JsonResponse({'success': False, 'is_wishlisted': False})
+
+
 def index_view(request):
     """Bosh sahifa"""
     featured_products = Product.objects.filter(is_available=True, is_featured=True)[:8]
@@ -65,13 +152,13 @@ def index_view(request):
         'new_products': new_products,
         'categories': categories,
         'cart_total_items': get_cart_total_items(request),
+        'wishlist_count': get_wishlist_count(request),
     }
     return render(request, 'shop/index.html', context)
 
 
 def product_list_view(request):
     """Mahsulotlar ro'yxati - barcha filterlar bilan"""
-    # Asosiy queryset - faqat mavjud mahsulotlar
     products = Product.objects.filter(is_available=True)
     categories = Category.objects.all()
 
@@ -117,10 +204,12 @@ def product_list_view(request):
     elif sort == 'name_asc':
         products = products.order_by('name')
     else:
-        products = products.order_by('-created_at')  # default: eng yangi
+        products = products.order_by('-created_at')
 
-    # Savatdagi mahsulotlar soni
-    cart_total_items = get_cart_total_items(request)
+    # Foydalanuvchining yoqtirgan mahsulotlari ID larini olish
+    wishlisted_ids = []
+    if request.user.is_authenticated:
+        wishlisted_ids = Wishlist.objects.filter(user=request.user).values_list('product_id', flat=True)
 
     context = {
         'products': products,
@@ -130,7 +219,9 @@ def product_list_view(request):
         'sort': sort,
         'min_price': min_price,
         'max_price': max_price,
-        'cart_total_items': cart_total_items,
+        'cart_total_items': get_cart_total_items(request),
+        'wishlist_count': get_wishlist_count(request),
+        'wishlisted_ids': wishlisted_ids,
     }
     return render(request, 'shop/product_list.html', context)
 
@@ -153,11 +244,18 @@ def product_detail_view(request, category_slug, product_slug):
         if session_item:
             cart_quantity = session_item.quantity
 
+    # Mahsulot yoqtirilganmi tekshirish
+    is_wishlisted = False
+    if request.user.is_authenticated:
+        is_wishlisted = Wishlist.objects.filter(user=request.user, product=product).exists()
+
     context = {
         'product': product,
         'related_products': related_products,
         'cart_quantity': cart_quantity,
         'cart_total_items': get_cart_total_items(request),
+        'wishlist_count': get_wishlist_count(request),
+        'is_wishlisted': is_wishlisted,
     }
     return render(request, 'shop/product_detail.html', context)
 
@@ -171,6 +269,7 @@ def category_products_view(request, category_slug):
         'category': category,
         'products': products,
         'cart_total_items': get_cart_total_items(request),
+        'wishlist_count': get_wishlist_count(request),
     }
     return render(request, 'shop/category_products.html', context)
 
@@ -230,7 +329,6 @@ def cart_add_view(request):
 
 def cart_view(request):
     """Savat sahifasi"""
-    # Agar foydalanuvchi login qilmagan bo'lsa, login sahifasiga yo'naltirish
     if not request.user.is_authenticated:
         messages.warning(request, 'Savatni ko\'rish uchun tizimga kiring!')
         return redirect('accounts:login')
@@ -239,6 +337,7 @@ def cart_view(request):
     context = {
         'cart': cart,
         'cart_total_items': cart.total_items,
+        'wishlist_count': get_wishlist_count(request),
     }
     return render(request, 'shop/cart.html', context)
 
@@ -291,7 +390,6 @@ def cart_update_view(request, item_id):
 
 def checkout_view(request):
     """Buyurtma berish sahifasi - login tekshiruvi"""
-    # Agar foydalanuvchi login qilmagan bo'lsa, login sahifasiga yo'naltirish
     if not request.user.is_authenticated:
         messages.warning(request, 'Buyurtma berish uchun tizimga kiring!')
         return redirect('accounts:login')
@@ -337,6 +435,7 @@ def checkout_view(request):
         'cart': cart,
         'form': form,
         'cart_total_items': cart.total_items,
+        'wishlist_count': get_wishlist_count(request),
     }
     return render(request, 'shop/checkout.html', context)
 
@@ -347,7 +446,11 @@ def order_success_view(request, order_id):
         return redirect('accounts:login')
 
     order = get_object_or_404(Order, id=order_id, user=request.user)
-    return render(request, 'shop/order_success.html', {'order': order})
+    context = {
+        'order': order,
+        'wishlist_count': get_wishlist_count(request),
+    }
+    return render(request, 'shop/order_success.html', context)
 
 
 def my_orders_view(request):
@@ -357,4 +460,9 @@ def my_orders_view(request):
         return redirect('accounts:login')
 
     orders = Order.objects.filter(user=request.user).order_by('-created_at')
-    return render(request, 'shop/my_orders.html', {'orders': orders})
+    context = {
+        'orders': orders,
+        'cart_total_items': get_cart_total_items(request),
+        'wishlist_count': get_wishlist_count(request),
+    }
+    return render(request, 'shop/my_orders.html', context)
