@@ -7,8 +7,7 @@ SECRET_KEY = 'django-insecure-your-secret-key'
 
 
 
-TELEGRAM_BOT_TOKEN = '8860253157:AAH8seuBA_N65t9SZt_sNrRNczL6jV4w31g'
-TELEGRAM_BOT_USERNAME = 'megasavdohub_bot'
+
 
 
 DEBUG = True

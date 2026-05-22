@@ -9,22 +9,41 @@
             <div class="card border-0 shadow-sm rounded-4">
                 <div class="card-body p-4">
                     <h5 class="mb-3">Ma'lumotlaringiz</h5>
+
+                    {% if messages %}
+                        {% for message in messages %}
+                            <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %} alert-dismissible fade show">
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+
                     <form method="post" id="orderForm">
                         {% csrf_token %}
 
                         <div class="mb-3">
                             <label class="form-label">To'liq ism *</label>
                             {{ form.full_name }}
+                            {% if form.full_name.errors %}
+                                <div class="text-danger small">{{ form.full_name.errors }}</div>
+                            {% endif %}
                         </div>
 
                         <div class="mb-3">
                             <label class="form-label">Telefon raqam *</label>
                             {{ form.phone }}
+                            {% if form.phone.errors %}
+                                <div class="text-danger small">{{ form.phone.errors }}</div>
+                            {% endif %}
                         </div>
 
                         <div class="mb-3">
                             <label class="form-label">Manzil *</label>
                             {{ form.address }}
+                            {% if form.address.errors %}
+                                <div class="text-danger small">{{ form.address.errors }}</div>
+                            {% endif %}
                         </div>
 
                         <div class="mb-3">
@@ -51,10 +70,33 @@
                     </div>
                     {% endfor %}
                     <hr>
+
                     <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted">Mahsulotlar summasi:</span>
+                        <span>{{ cart.total_price|floatformat:0 }} so'm</span>
+                    </div>
+
+                    {% if discount > 0 %}
+                    <div class="d-flex justify-content-between mb-2 text-success">
+                        <span class="text-muted">Kupon chegirmasi:</span>
+                        <span>- {{ discount|floatformat:0 }} so'm</span>
+                    </div>
+                    <div class="d-flex justify-content-between pt-2 border-top">
+                        <span class="fw-bold">Umumiy summa:</span>
+                        <span class="fw-bold text-success fs-5">{{ final_total|floatformat:0 }} so'm</span>
+                    </div>
+                    {% if coupon_code %}
+                    <div class="small text-muted mt-2">
+                        <i class="fas fa-ticket-alt me-1"></i> Kupon: <strong>{{ coupon_code }}</strong>
+                    </div>
+                    {% endif %}
+                    {% else %}
+                    <div class="d-flex justify-content-between pt-2">
                         <span class="fw-bold">Umumiy summa:</span>
                         <span class="fw-bold text-success fs-5">{{ cart.total_price|floatformat:0 }} so'm</span>
                     </div>
+                    {% endif %}
+
                     <div class="mt-3 small text-muted">
                         <i class="fas fa-info-circle me-1"></i> Buyurtma berganingizdan so'ng siz bilan bog'lanamiz.
                     </div>

@@ -1,4 +1,5 @@
 {% extends 'shop/base.html' %}
+{% load custom_filters %}
 
 {% block content %}
 <div class="container">
@@ -149,6 +150,269 @@
         </div>
     </div>
     {% endif %}
+
+    <!-- ========== SHARHLAR (REVIEWS) BO'LIMI ========== -->
+    <div class="mt-5">
+        <h3 class="mb-4" style="color: #1a2e1f;">
+            <i class="fas fa-star me-2" style="color: #ffc107;"></i>
+            Sharhlar ({{ review_count }})
+        </h3>
+
+        <!-- Reyting statistikasi -->
+        <div class="row mb-4">
+            <div class="col-md-4">
+                <div class="text-center p-3 bg-light rounded-4">
+                    <div class="display-1 fw-bold text-success">{{ avg_rating|floatformat:1 }}</div>
+                    <div class="mb-2">
+                        {% for i in "12345"|make_list %}
+                            {% if forloop.counter <= avg_rating|floatformat:"0"|add:0 %}
+                                <i class="fas fa-star text-warning"></i>
+                            {% elif forloop.counter <= avg_rating|add:0.5 %}
+                                <i class="fas fa-star-half-alt text-warning"></i>
+                            {% else %}
+                                <i class="far fa-star text-warning"></i>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                    <div>{{ review_count }} ta sharh</div>
+                </div>
+            </div>
+            <div class="col-md-8">
+                {% for i in "54321"|make_list %}
+                    {% with rating_value=forloop.revcounter %}
+                    <div class="d-flex align-items-center mb-2">
+                        <div style="width: 60px;">{{ rating_value }} ★</div>
+                        <div class="flex-grow-1 mx-2">
+                            <div class="progress" style="height: 8px;">
+                                <div class="progress-bar bg-success" style="width:
+                                    {% if review_count > 0 %}
+                                        {% widthratio rating_distribution|get_item:rating_value review_count 100 %}
+                                    {% else %}
+                                        0
+                                    {% endif %}
+                                    %"></div>
+                            </div>
+                        </div>
+                        <div style="width: 40px;">{{ rating_distribution|get_item:rating_value|default:0 }}</div>
+                    </div>
+                    {% endwith %}
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Sharh yozish formasi - Play Market uslubida -->
+        {% if user.is_authenticated %}
+            {% if user_review %}
+                <div class="alert alert-info mb-4">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Siz bu mahsulotga allaqachon sharh yozgansiz.
+                    <a href="{% url 'shop:edit_review' user_review.id %}" class="alert-link">Tahrirlash</a> |
+                    <a href="{% url 'shop:delete_review' user_review.id %}" class="alert-link text-danger" onclick="return confirm('Sharhni o\'chirmoqchimisiz?')">O'chirish</a>
+                </div>
+            {% else %}
+                <div class="card border-0 shadow-sm rounded-4 mb-4">
+                    <div class="card-body p-4">
+                        <h5 class="mb-3"><i class="me-2"></i>Sharh yozish</h5>
+
+                        <form method="post" action="{% url 'shop:add_review' product.id %}" id="reviewForm">
+                            {% csrf_token %}
+
+                            <!-- Play Market uslubida yulduzlar -->
+                            <div class="mb-3 text-center">
+                                <label class="form-label fw-semibold mb-3 d-block">Mahsulotni baholang</label>
+                                <div class="play-market-stars">
+                                    <div class="stars-container">
+                                        <i class="far fa-star" data-value="1"></i>
+                                        <i class="far fa-star" data-value="2"></i>
+                                        <i class="far fa-star" data-value="3"></i>
+                                        <i class="far fa-star" data-value="4"></i>
+                                        <i class="far fa-star" data-value="5"></i>
+                                    </div>
+                                    <input type="hidden" name="rating" id="ratingValue" required>
+                                    <div class="rating-message mt-3">
+                                        <span class="rating-text text-muted">⭐ Baholash uchun yulduzni bosing</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Sharh matni -->
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">Sharhingiz</label>
+                                <textarea name="comment" class="form-control" rows="3" placeholder="Mahsulot haqida fikringizni yozing..." required></textarea>
+                            </div>
+
+                            <button type="submit" class="btn-primary-custom w-100" id="submitReviewBtn" disabled>
+                                <i class="fas fa-comment me-2"></i> Sharh yuborish
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <style>
+                    .play-market-stars {
+                        text-align: center;
+                        padding: 10px 0;
+                    }
+                    .stars-container {
+                        display: inline-flex;
+                        gap: 12px;
+                        direction: ltr;
+                    }
+                    .stars-container i {
+                        font-size: 42px;
+                        cursor: pointer;
+                        transition: all 0.2s ease;
+                        color: #d3d3d3;
+                    }
+                    .stars-container i:hover,
+                    .stars-container i.active {
+                        color: #ffc107;
+                    }
+                    .stars-container i:hover ~ i {
+                        color: #d3d3d3;
+                    }
+                    .rating-message {
+                        min-height: 50px;
+                    }
+                    .rating-text {
+                        font-size: 14px;
+                        font-weight: 500;
+                    }
+                    .rating-text.rated {
+                        color: #ffc107;
+                    }
+                </style>
+
+                <script>
+                    document.addEventListener('DOMContentLoaded', function() {
+                        const stars = document.querySelectorAll('.stars-container i');
+                        const ratingInput = document.getElementById('ratingValue');
+                        const ratingTextSpan = document.querySelector('.rating-text');
+                        const submitBtn = document.getElementById('submitReviewBtn');
+                        let currentRating = 0;
+
+                        // Yulduzga hover effekti
+                        stars.forEach(star => {
+                            star.addEventListener('mouseenter', function() {
+                                const value = parseInt(this.dataset.value);
+                                highlightStarsHover(value);
+                            });
+
+                            star.addEventListener('mouseleave', function() {
+                                if (currentRating > 0) {
+                                    highlightStars(currentRating);
+                                } else {
+                                    stars.forEach(s => {
+                                        s.classList.remove('active');
+                                        s.classList.remove('fas');
+                                        s.classList.add('far');
+                                    });
+                                }
+                            });
+
+                            // Yulduzni bosganda
+                            star.addEventListener('click', function() {
+                                currentRating = parseInt(this.dataset.value);
+                                ratingInput.value = currentRating;
+                                highlightStars(currentRating);
+
+                                // Rating matnini yangilash
+                                const ratingMessages = {
+                                    1: '⭐ Juda yomon - Mahsulot kutilganimdan past',
+                                    2: '⭐ Yomon - Ko\'p kamchiliklari bor',
+                                    3: '⭐ O\'rtacha - Yaxshi, lekin yaxshilanishi mumkin',
+                                    4: '⭐ Yaxshi - Mahsulot yoqdi, tavsiya qilaman',
+                                    5: '⭐⭐⭐⭐⭐ Ajoyib! - Mahsulot juda zo\'r, albatta tavsiya!'
+                                };
+                                ratingTextSpan.innerHTML = ratingMessages[currentRating];
+                                ratingTextSpan.classList.add('rated');
+
+                                // Tugmani faollashtirish
+                                submitBtn.disabled = false;
+                            });
+                        });
+
+                        // Hover paytida yulduzlarni to'ldirish
+                        function highlightStarsHover(rating) {
+                            stars.forEach(star => {
+                                const value = parseInt(star.dataset.value);
+                                if (value <= rating) {
+                                    star.classList.remove('far');
+                                    star.classList.add('fas');
+                                } else {
+                                    star.classList.remove('fas');
+                                    star.classList.add('far');
+                                }
+                            });
+                        }
+
+                        // Tanlangan yulduzlarni ko'rsatish
+                        function highlightStars(rating) {
+                            stars.forEach(star => {
+                                const value = parseInt(star.dataset.value);
+                                if (value <= rating) {
+                                    star.classList.remove('far');
+                                    star.classList.add('fas');
+                                    star.classList.add('active');
+                                } else {
+                                    star.classList.remove('fas');
+                                    star.classList.remove('active');
+                                    star.classList.add('far');
+                                }
+                            });
+                        }
+                    });
+                </script>
+            {% endif %}
+        {% else %}
+            <div class="alert alert-info mb-4">
+                <i class="fas fa-info-circle me-2"></i>
+                Sharh yozish uchun <a href="{% url 'accounts:login' %}?next={{ request.path }}" class="alert-link">tizimga kiring</a>
+            </div>
+        {% endif %}
+
+        <!-- Sharhlar ro'yxati -->
+        {% if reviews %}
+            <div class="reviews-list">
+                <h5 class="mb-3"><i class="fas fa-comments me-2"></i>Barcha sharhlar</h5>
+                {% for review in reviews %}
+                <div class="border-bottom pb-3 mb-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <div class="mb-1">
+                                {% for i in "12345"|make_list %}
+                                    {% if forloop.counter <= review.rating %}
+                                        <i class="fas fa-star text-warning"></i>
+                                    {% else %}
+                                        <i class="far fa-star text-warning"></i>
+                                    {% endif %}
+                                {% endfor %}
+                            </div>
+                            <strong>{{ review.user.phone_number|slice:":8" }}***</strong>
+                            <small class="text-muted ms-2">{{ review.created_at|date:"d.m.Y H:i" }}</small>
+                        </div>
+                        {% if user.is_authenticated and user == review.user %}
+                        <div>
+                            <a href="{% url 'shop:edit_review' review.id %}" class="text-warning me-2" title="Tahrirlash">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            <a href="{% url 'shop:delete_review' review.id %}" class="text-danger" title="O'chirish" onclick="return confirm('Sharhni o\'chirmoqchimisiz?')">
+                                <i class="fas fa-trash-alt"></i>
+                            </a>
+                        </div>
+                        {% endif %}
+                    </div>
+                    <p class="mt-2 mb-0">{{ review.comment }}</p>
+                </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="text-center py-4">
+                <i class="far fa-comment-dots fa-3x text-muted mb-3"></i>
+                <p class="text-muted">Hozircha hech qanday sharh yo'q. Birinchi bo'lib sharh yozing!</p>
+            </div>
+        {% endif %}
+    </div>
 </div>
 
 <style>
@@ -178,6 +442,13 @@
     }
     .wishlist-btn:hover {
         transform: scale(1.02);
+    }
+    .progress {
+        background-color: #e0e0e0;
+        border-radius: 10px;
+    }
+    .progress-bar {
+        border-radius: 10px;
     }
     @media (max-width: 768px) {
         .d-flex.gap-3 {

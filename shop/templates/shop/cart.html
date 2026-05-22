@@ -35,9 +35,10 @@
                         </div>
                         <div class="col-2 col-md-2 text-end">
                             <div class="fw-bold text-success">{{ item.total_price|floatformat:0 }} so'm</div>
-                            <button class="btn btn-link text-danger p-0 mt-1" onclick="removeItem({{ item.id }})">
-                                <i class="fas fa-trash-alt"></i> O'chirish
-                            </button>
+<button class="btn text-decoration-none p-2 mt-1 remove-btn" style="margin-right: 6px;"
+        onclick="removeItem({{ item.id }})">
+    <i class="fas fa-trash-alt"></i> O'chirish
+</button>
                         </div>
                     </div>
                     {% endfor %}
@@ -46,6 +47,54 @@
         </div>
 
         <div class="col-lg-4 mt-4 mt-lg-0">
+            <!-- Kupon kodi qismi -->
+            <div class="card border-0 shadow-sm rounded-4 mb-3">
+                <div class="card-body p-4">
+                    <h5 class="mb-3"><i class="fas fa-ticket-alt me-2"></i>Kupon kodi</h5>
+
+                    <!-- Kupon aktiv bo'lsa -->
+                    {% if coupon_code %}
+                    <!-- 1-QISM: Kupon ma'lumotlari (alohida dizayn) -->
+                    <div class="coupon-info-box">
+                        <div class="coupon-check-icon">
+                            <i class="fas fa-check-circle"></i>
+                        </div>
+                        <div class="coupon-content">
+                            <div class="coupon-status">
+                                <strong>Kupon qo'llangan!</strong>
+                            </div>
+                            <div class="coupon-detail-row">
+                                <span class="detail-label">Kodi:</span>
+                                <span class="detail-value coupon-code-value">{{ coupon_code }}</span>
+                            </div>
+                            <div class="coupon-detail-row">
+                                <span class="detail-label">Chegirma:</span>
+                                <span class="detail-value coupon-discount-value">-{{ discount|floatformat:0 }} so'm</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 2-QISM: Olib tashlash tugmasi (alohida dizayn) -->
+                    <button class="coupon-remove-button" id="removeCouponBtn">
+                        <i class="fas fa-times"></i>
+                        <span>Olib tashlash</span>
+                    </button>
+                    {% endif %}
+
+                    <!-- Kupon kiritish formasi -->
+                    <div id="couponFormSection" {% if coupon_code %}style="display: none;"{% endif %}>
+                        <div class="input-group">
+                            <input type="text" id="couponCode" class="form-control" placeholder="Kupon kodini kiriting" style="border-radius: 12px 0 0 12px;">
+                            <button class="btn-primary-custom" type="button" id="applyCouponBtn" style="border-radius: 0 12px 12px 0;">
+                                <i class="fas fa-check me-2"></i> Qo'llash
+                            </button>
+                        </div>
+                        <div id="couponMessage" class="mt-2"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Buyurtma haqida -->
             <div class="card border-0 shadow-sm rounded-4">
                 <div class="card-body p-4">
                     <h5 class="mb-3">Buyurtma haqida</h5>
@@ -53,11 +102,28 @@
                         <span class="text-muted">Mahsulotlar soni:</span>
                         <span class="fw-bold">{{ cart.total_items }} dona</span>
                     </div>
-                    <div class="d-flex justify-content-between mb-3">
-                        <span class="text-muted">Umumiy summa:</span>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted">Mahsulotlar summasi:</span>
+                        <span class="fw-bold">{{ cart.total_price|floatformat:0 }} so'm</span>
+                    </div>
+
+                    {% if discount > 0 %}
+                    <div class="d-flex justify-content-between mb-2 text-success">
+                        <span class="text-muted">Chegirma:</span>
+                        <span class="fw-bold">- {{ discount|floatformat:0 }} so'm</span>
+                    </div>
+                    <div class="d-flex justify-content-between pt-2 border-top mt-2">
+                        <span class="fw-bold fs-5">Umumiy summa:</span>
+                        <span class="fw-bold text-success fs-5">{{ final_total|floatformat:0 }} so'm</span>
+                    </div>
+                    {% else %}
+                    <div class="d-flex justify-content-between pt-2">
+                        <span class="fw-bold fs-5">Umumiy summa:</span>
                         <span class="fw-bold text-success fs-5">{{ cart.total_price|floatformat:0 }} so'm</span>
                     </div>
-                    <hr>
+                    {% endif %}
+
+                    <hr class="my-3">
                     <a href="{% url 'shop:checkout' %}" class="btn-primary-custom w-100 py-2 text-center">
                         <i class="fas fa-credit-card me-2"></i> Buyurtma berish
                     </a>
@@ -77,6 +143,146 @@
     </div>
     {% endif %}
 </div>
+
+<style>
+    /* 1-QISM: Kupon ma'lumotlari uchun alohida dizayn */
+    .coupon-info-box {
+        background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+        border-radius: 16px;
+        padding: 16px;
+        margin-bottom: 15px;
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        border: 1px solid #a5d6a7;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+
+    .coupon-check-icon {
+        background: #2e7d32;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+
+    .coupon-check-icon i {
+        color: white;
+        font-size: 20px;
+    }
+
+    .coupon-content {
+        flex: 1;
+    }
+
+    .coupon-status {
+        font-size: 15px;
+        color: #1b5e20;
+        margin-bottom: 8px;
+    }
+
+    .coupon-detail-row {
+        display: flex;
+        align-items: baseline;
+        gap: 8px;
+        margin-top: 4px;
+    }
+.remove-btn {
+    border: 1px solid #dc3545;
+    border-radius: 8px;
+    background: transparent;
+    font-size: 13px;
+    line-height: 1.2;
+    color: #dc3545 !important;
+    transition: all 0.3s ease;
+}
+
+.remove-btn i {
+    color: #dc3545 !important;
+}
+
+.remove-btn:hover {
+    background-color: #dc3545;
+    color: #ffffff !important;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(220, 53, 69, 0.3);
+}
+
+.remove-btn:hover i {
+    color: #ffffff !important;
+}
+
+.remove-btn:active {
+    transform: scale(0.96);
+}
+
+    .btn-link:hover {
+        text-decoration: none !important;
+    }
+
+    .detail-label {
+        font-size: 13px;
+        color: #6c757d;
+        min-width: 60px;
+    }
+
+    .detail-value {
+        font-size: 14px;
+        font-weight: 600;
+    }
+
+    .coupon-code-value {
+        color: #2e7d32;
+        background: #ffffff;
+        padding: 2px 10px;
+        border-radius: 20px;
+        font-family: monospace;
+        letter-spacing: 1px;
+    }
+
+    .coupon-discount-value {
+        color: #e91e63;
+        font-size: 16px;
+    }
+
+    /* 2-QISM: Olib tashlash tugmasi uchun alohida dizayn */
+    .coupon-remove-button {
+        background: white;
+        border: 1.5px solid #dc3545;
+        color: #dc3545;
+        padding: 10px 16px;
+        border-radius: 12px;
+        font-weight: 600;
+        font-size: 14px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        background: #fff5f5;
+    }
+
+    .coupon-remove-button:hover {
+        background: #dc3545;
+        color: white;
+        border-color: #dc3545;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
+    }
+
+    .coupon-remove-button:active {
+        transform: translateY(0);
+    }
+
+    .coupon-remove-button i {
+        font-size: 14px;
+    }
+</style>
 
 <script>
     function updateQuantity(itemId, newQuantity) {
@@ -140,5 +346,51 @@
             setTimeout(() => toast.remove(), 300);
         }, 3000);
     }
+
+    // Kupon qo'llash
+    $('#applyCouponBtn').click(function() {
+        var couponCode = $('#couponCode').val();
+
+        $.ajax({
+            url: "{% url 'shop:apply_coupon' %}",
+            method: "POST",
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Content-Type': 'application/json'
+            },
+            data: JSON.stringify({coupon_code: couponCode}),
+            success: function(response) {
+                if (response.success) {
+                    showToast(response.message, 'success');
+                    location.reload();
+                } else {
+                    showToast(response.message, 'error');
+                    $('#couponCode').val('');
+                }
+            },
+            error: function() {
+                showToast('Xatolik yuz berdi', 'error');
+            }
+        });
+    });
+
+    // Kupon olib tashlash
+    $('#removeCouponBtn').click(function() {
+        $.ajax({
+            url: "{% url 'shop:remove_coupon' %}",
+            method: "GET",
+            success: function(response) {
+                if (response.success) {
+                    showToast(response.message, 'success');
+                    location.reload();
+                } else {
+                    showToast('Xatolik yuz berdi', 'error');
+                }
+            },
+            error: function() {
+                showToast('Xatolik yuz berdi', 'error');
+            }
+        });
+    });
 </script>
 {% endblock %}

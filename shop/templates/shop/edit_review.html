@@ -1,0 +1,183 @@
+{% extends 'shop/base.html' %}
+{% load custom_filters %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm rounded-4">
+                <div class="card-body p-4">
+                    <h3 class="mb-4" style="color: #1a2e1f;">
+                        <i class="fas fa-edit me-2"></i>Sharhni tahrirlash
+                    </h3>
+
+                    <div class="mb-3">
+                        <strong>Mahsulot:</strong> {{ product.name }}
+                    </div>
+
+                    <form method="post">
+                        {% csrf_token %}
+
+                        <!-- Yulduzlar bilan baholash -->
+                        <div class="mb-3 text-center">
+                            <label class="form-label fw-semibold mb-3 d-block">Mahsulotni baholang</label>
+                            <div class="play-market-stars">
+                                <div class="stars-container">
+                                    <i class="{% if review.rating >= 1 %}fas{% else %}far{% endif %} fa-star" data-value="1"></i>
+                                    <i class="{% if review.rating >= 2 %}fas{% else %}far{% endif %} fa-star" data-value="2"></i>
+                                    <i class="{% if review.rating >= 3 %}fas{% else %}far{% endif %} fa-star" data-value="3"></i>
+                                    <i class="{% if review.rating >= 4 %}fas{% else %}far{% endif %} fa-star" data-value="4"></i>
+                                    <i class="{% if review.rating >= 5 %}fas{% else %}far{% endif %} fa-star" data-value="5"></i>
+                                </div>
+                                <input type="hidden" name="rating" id="ratingValue" value="{{ review.rating }}" required>
+                                <div class="rating-message mt-3">
+                                    <span class="rating-text">
+                                        {% if review.rating == 5 %}⭐⭐⭐⭐⭐ Ajoyib! - Mahsulot juda zo'r, albatta tavsiya!
+                                        {% elif review.rating == 4 %}⭐ Yaxshi - Mahsulot yoqdi, tavsiya qilaman
+                                        {% elif review.rating == 3 %}⭐ O'rtacha - Yaxshi, lekin yaxshilanishi mumkin
+                                        {% elif review.rating == 2 %}⭐ Yomon - Ko'p kamchiliklari bor
+                                        {% elif review.rating == 1 %}⭐ Juda yomon - Mahsulot kutilganimdan past
+                                        {% endif %}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Sharh matni -->
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Sharhingiz</label>
+                            <textarea name="comment" class="form-control" rows="4" required>{{ review.comment }}</textarea>
+                        </div>
+
+                        <div class="d-flex gap-3">
+                            <button type="submit" class="btn-primary-custom flex-grow-1">
+                                <i class="fas fa-save me-2"></i> Saqlash
+                            </button>
+                            <a href="{{ product.get_absolute_url }}" class="btn-outline-custom flex-grow-1 text-center">
+                                <i class="fas fa-times me-2"></i> Bekor qilish
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .play-market-stars {
+        text-align: center;
+        padding: 10px 0;
+    }
+    .stars-container {
+        display: inline-flex;
+        gap: 12px;
+        direction: ltr;
+    }
+    .stars-container i {
+        font-size: 42px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        color: #d3d3d3;
+    }
+    .stars-container i:hover,
+    .stars-container i.active {
+        color: #ffc107;
+    }
+    .stars-container i:hover ~ i {
+        color: #d3d3d3;
+    }
+    .rating-message {
+        min-height: 50px;
+    }
+    .rating-text {
+        font-size: 14px;
+        font-weight: 500;
+    }
+    .rating-text.rated {
+        color: #ffc107;
+    }
+</style>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const stars = document.querySelectorAll('.stars-container i');
+        const ratingInput = document.getElementById('ratingValue');
+        const ratingTextSpan = document.querySelector('.rating-text');
+        let currentRating = parseInt(ratingInput.value) || 0;
+
+        // Yulduzga hover effekti
+        stars.forEach(star => {
+            star.addEventListener('mouseenter', function() {
+                const value = parseInt(this.dataset.value);
+                highlightStarsHover(value);
+            });
+
+            star.addEventListener('mouseleave', function() {
+                if (currentRating > 0) {
+                    highlightStars(currentRating);
+                } else {
+                    stars.forEach(s => {
+                        s.classList.remove('active');
+                        s.classList.remove('fas');
+                        s.classList.add('far');
+                    });
+                }
+            });
+
+            // Yulduzni bosganda
+            star.addEventListener('click', function() {
+                currentRating = parseInt(this.dataset.value);
+                ratingInput.value = currentRating;
+                highlightStars(currentRating);
+
+                // Rating matnini yangilash
+                const ratingMessages = {
+                    1: '⭐ Juda yomon - Mahsulot kutilganimdan past',
+                    2: '⭐ Yomon - Ko\'p kamchiliklari bor',
+                    3: '⭐ O\'rtacha - Yaxshi, lekin yaxshilanishi mumkin',
+                    4: '⭐ Yaxshi - Mahsulot yoqdi, tavsiya qilaman',
+                    5: '⭐⭐⭐⭐⭐ Ajoyib! - Mahsulot juda zo\'r, albatta tavsiya!'
+                };
+                ratingTextSpan.innerHTML = ratingMessages[currentRating];
+                ratingTextSpan.classList.add('rated');
+            });
+        });
+
+        // Hover paytida yulduzlarni to'ldirish
+        function highlightStarsHover(rating) {
+            stars.forEach(star => {
+                const value = parseInt(star.dataset.value);
+                if (value <= rating) {
+                    star.classList.remove('far');
+                    star.classList.add('fas');
+                } else {
+                    star.classList.remove('fas');
+                    star.classList.add('far');
+                }
+            });
+        }
+
+        // Tanlangan yulduzlarni ko'rsatish
+        function highlightStars(rating) {
+            stars.forEach(star => {
+                const value = parseInt(star.dataset.value);
+                if (value <= rating) {
+                    star.classList.remove('far');
+                    star.classList.add('fas');
+                    star.classList.add('active');
+                } else {
+                    star.classList.remove('fas');
+                    star.classList.remove('active');
+                    star.classList.add('far');
+                }
+            });
+        }
+
+        // Boshlang'ich yulduzlarni ko'rsatish
+        if (currentRating > 0) {
+            highlightStars(currentRating);
+        }
+    });
+</script>
+{% endblock %}

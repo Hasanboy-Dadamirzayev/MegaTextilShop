@@ -22,18 +22,29 @@
                     <span>{{ order.phone }}</span>
                 </div>
                 <div class="d-flex justify-content-between mb-2">
+                    <span class="text-muted">Mahsulotlar soni:</span>
+                    <span>{% for item in order.items.all %}{% if forloop.first %}{{ item.quantity }}{% endif %}{% endfor %} dona</span>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
                     <span class="text-muted">Umumiy summa:</span>
                     <span class="fw-bold text-success">{{ order.total_amount|floatformat:0 }} so'm</span>
                 </div>
                 <div class="d-flex justify-content-between">
                     <span class="text-muted">Holat:</span>
-                    <span class="badge bg-warning">Kutilmoqda</span>
+                    <span class="badge
+                        {% if order.status == 'pending' %}bg-warning
+                        {% elif order.status == 'confirmed' %}bg-info
+                        {% elif order.status == 'shipped' %}bg-primary
+                        {% elif order.status == 'delivered' %}bg-success
+                        {% else %}bg-danger{% endif %}">
+                        {{ order.get_status_display }}
+                    </span>
                 </div>
                 <hr>
-                <a href="{% url 'shop:my_orders' %}" class="btn-primary-custom w-100 text-center">
+                <a href="{% url 'shop:my_orders' %}" class="btn-primary-custom w-100 text-center" style="display: inline-block;">
                     <i class="fas fa-box me-2"></i> Buyurtmalarim
                 </a>
-                <a href="{% url 'shop:index' %}" class="btn-outline-custom w-100 text-center mt-3">
+                <a href="{% url 'shop:index' %}" class="btn-outline-custom w-100 text-center mt-3" style="display: inline-block;">
                     <i class="fas fa-home me-2"></i> Bosh sahifa
                 </a>
             </div>

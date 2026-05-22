@@ -4,8 +4,11 @@ from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.contrib import messages
 from django.urls import reverse
-from .forms import OrderForm
-from .models import Category, Product, Cart, CartItem, Order, OrderItem, SessionCart, SessionCartItem, Wishlist
+from django.utils import timezone
+from django.db import models
+from .forms import OrderForm, ReviewForm
+from .models import Category, Product, Cart, CartItem, Order, OrderItem, SessionCart, SessionCartItem, Wishlist, Review, \
+    Coupon, UserCoupon
 
 
 def get_or_create_session_cart(request):
@@ -227,9 +230,21 @@ def product_list_view(request):
 
 
 def product_detail_view(request, category_slug, product_slug):
-    """Mahsulot detali"""
+    """Mahsulot detali - sharhlar bilan"""
     product = get_object_or_404(Product, slug=product_slug, category__slug=category_slug, is_available=True)
     related_products = Product.objects.filter(category=product.category, is_available=True).exclude(id=product.id)[:4]
+
+    # Sharhlar
+    reviews = Review.objects.filter(product=product, is_approved=True).order_by('-created_at')
+
+    # O'rtacha reyting
+    avg_rating = reviews.aggregate(models.Avg('rating'))['rating__avg'] or 0
+    review_count = reviews.count()
+
+    # Reyting taqsimoti
+    rating_distribution = {}
+    for i in range(1, 6):
+        rating_distribution[i] = reviews.filter(rating=i).count()
 
     cart_quantity = 0
     if request.user.is_authenticated:
@@ -238,13 +253,13 @@ def product_detail_view(request, category_slug, product_slug):
             cart_item = cart.items.filter(product=product).first()
             if cart_item:
                 cart_quantity = cart_item.quantity
-    else:
-        session_cart = get_or_create_session_cart(request)
-        session_item = session_cart.items.filter(product=product).first()
-        if session_item:
-            cart_quantity = session_item.quantity
 
-    # Mahsulot yoqtirilganmi tekshirish
+    # Foydalanuvchi sharh yozganmi
+    user_review = None
+    if request.user.is_authenticated:
+        user_review = Review.objects.filter(product=product, user=request.user).first()
+
+    # Wishlist status
     is_wishlisted = False
     if request.user.is_authenticated:
         is_wishlisted = Wishlist.objects.filter(user=request.user, product=product).exists()
@@ -254,8 +269,13 @@ def product_detail_view(request, category_slug, product_slug):
         'related_products': related_products,
         'cart_quantity': cart_quantity,
         'cart_total_items': get_cart_total_items(request),
-        'wishlist_count': get_wishlist_count(request),
+        'reviews': reviews,
+        'avg_rating': avg_rating,
+        'review_count': review_count,
+        'rating_distribution': rating_distribution,
+        'user_review': user_review,
         'is_wishlisted': is_wishlisted,
+        'wishlist_count': get_wishlist_count(request),
     }
     return render(request, 'shop/product_detail.html', context)
 
@@ -334,16 +354,60 @@ def cart_view(request):
         return redirect('accounts:login')
 
     cart, created = Cart.objects.get_or_create(user=request.user)
+
+    # Kupon chegirmasini hisoblash
+    discount = 0
+    coupon_code = None
+    coupon_id = None
+
+    if 'coupon_id' in request.session:
+        try:
+            coupon_id = request.session.get('coupon_id')
+            coupon = Coupon.objects.get(id=coupon_id, is_active=True)
+
+            # Kupon hali ham amal qilishini tekshirish
+            now = timezone.now()
+            if coupon.valid_from <= now <= coupon.valid_to:
+                discount = coupon.calculate_discount(cart.total_price)
+                coupon_code = coupon.code
+                # Sessionni yangilash
+                request.session['coupon_code'] = coupon_code
+                request.session['coupon_discount'] = float(discount)
+            else:
+                # Kupon muddati tugagan bo'lsa, sessiondan o'chirish
+                if 'coupon_code' in request.session:
+                    del request.session['coupon_code']
+                if 'coupon_discount' in request.session:
+                    del request.session['coupon_discount']
+                if 'coupon_id' in request.session:
+                    del request.session['coupon_id']
+        except Coupon.DoesNotExist:
+            # Kupon topilmasa, sessiondan o'chirish
+            if 'coupon_code' in request.session:
+                del request.session['coupon_code']
+            if 'coupon_discount' in request.session:
+                del request.session['coupon_discount']
+            if 'coupon_id' in request.session:
+                del request.session['coupon_id']
+    elif 'coupon_code' in request.session:
+        coupon_code = request.session.get('coupon_code')
+        discount = float(request.session.get('coupon_discount', 0))
+
+    final_total = cart.total_price - discount
+
     context = {
         'cart': cart,
         'cart_total_items': cart.total_items,
         'wishlist_count': get_wishlist_count(request),
+        'discount': discount,
+        'final_total': final_total,
+        'coupon_code': coupon_code,
     }
     return render(request, 'shop/cart.html', context)
 
 
 def cart_remove_view(request, item_id):
-    """Savatdan o'chirish - login tekshiruvi"""
+    """Savatdan o'chirish"""
     if not request.user.is_authenticated:
         messages.warning(request, 'Mahsulotni o\'chirish uchun tizimga kiring!')
         return redirect('accounts:login')
@@ -355,7 +419,7 @@ def cart_remove_view(request, item_id):
 
 
 def cart_update_view(request, item_id):
-    """Savatdagi mahsulot sonini o'zgartirish - login tekshiruvi"""
+    """Savatdagi mahsulot sonini o'zgartirish"""
     if not request.user.is_authenticated:
         return JsonResponse({'success': False, 'message': 'Tizimga kiring!'})
 
@@ -388,8 +452,81 @@ def cart_update_view(request, item_id):
     return JsonResponse({'success': False})
 
 
+# ========== KUPON VIEWS ==========
+
+def apply_coupon_view(request):
+    """Kuponi qo'llash (AJAX)"""
+    if not request.user.is_authenticated:
+        return JsonResponse({'success': False, 'message': 'Tizimga kiring!'})
+
+    if request.method == 'POST':
+        data = json.loads(request.body)
+        coupon_code = data.get('coupon_code', '').upper().strip()
+
+        try:
+            coupon = Coupon.objects.get(code=coupon_code, is_active=True)
+
+            # Kuponning amal qilish muddatini tekshirish
+            now = timezone.now()
+            if not (coupon.valid_from <= now <= coupon.valid_to):
+                return JsonResponse({'success': False, 'message': 'Kuponning amal qilish muddati tugagan!'})
+
+            # Ishlatilish chegarasini tekshirish
+            if coupon.usage_limit <= coupon.used_count:
+                return JsonResponse({'success': False, 'message': 'Kupon ishlatilish chegarasiga yetgan!'})
+
+            # Foydalanuvchi allaqachon ishlatganmi?
+            if UserCoupon.objects.filter(user=request.user, coupon=coupon).exists():
+                return JsonResponse({'success': False, 'message': 'Siz bu kupondan allaqachon foydalandingiz!'})
+
+            # Savatni olish
+            cart = Cart.objects.filter(user=request.user).first()
+            if not cart or cart.total_items == 0:
+                return JsonResponse({'success': False, 'message': 'Savat bo\'sh!'})
+
+            # Minimal buyurtma summasini tekshirish
+            if cart.total_price < coupon.min_order_amount:
+                return JsonResponse({
+                    'success': False,
+                    'message': f'Kupondan foydalanish uchun minimal buyurtma summasi {coupon.min_order_amount:,.0f} so\'m bo\'lishi kerak!'
+                })
+
+            # Chegirmani hisoblash
+            discount = coupon.calculate_discount(cart.total_price)
+
+            # Sessionga kupon ma'lumotlarini saqlash
+            request.session['coupon_code'] = coupon_code
+            request.session['coupon_discount'] = float(discount)
+            request.session['coupon_id'] = coupon.id
+
+            return JsonResponse({
+                'success': True,
+                'message': f'Kupon qo\'llandi! {discount:,.0f} so\'m chegirma',
+                'discount': float(discount),
+                'cart_total': float(cart.total_price),
+                'new_total': float(cart.total_price - discount),
+                'coupon_code': coupon_code
+            })
+
+        except Coupon.DoesNotExist:
+            return JsonResponse({'success': False, 'message': 'Kupon topilmadi!'})
+
+    return JsonResponse({'success': False, 'message': 'Xatolik yuz berdi!'})
+
+
+def remove_coupon_view(request):
+    """Kuponi olib tashlash"""
+    if 'coupon_code' in request.session:
+        del request.session['coupon_code']
+    if 'coupon_discount' in request.session:
+        del request.session['coupon_discount']
+    if 'coupon_id' in request.session:
+        del request.session['coupon_id']
+    return JsonResponse({'success': True, 'message': 'Kupon olib tashlandi!', 'redirect': True})
+
+
 def checkout_view(request):
-    """Buyurtma berish sahifasi - login tekshiruvi"""
+    """Buyurtma berish sahifasi"""
     if not request.user.is_authenticated:
         messages.warning(request, 'Buyurtma berish uchun tizimga kiring!')
         return redirect('accounts:login')
@@ -399,14 +536,71 @@ def checkout_view(request):
         messages.warning(request, 'Savatda hech qanday mahsulot yo\'q')
         return redirect('shop:cart')
 
+    # Kupon chegirmasini hisoblash
+    discount = 0
+    coupon = None
+    coupon_code = None
+
+    if 'coupon_id' in request.session:
+        try:
+            coupon_id = request.session.get('coupon_id')
+            coupon = Coupon.objects.get(id=coupon_id, is_active=True)
+
+            # Kupon hali ham amal qilishini tekshirish
+            now = timezone.now()
+            if coupon.valid_from <= now <= coupon.valid_to:
+                discount = coupon.calculate_discount(cart.total_price)
+                coupon_code = coupon.code
+            else:
+                # Kupon muddati tugagan bo'lsa, sessiondan o'chirish
+                if 'coupon_id' in request.session:
+                    del request.session['coupon_id']
+                if 'coupon_code' in request.session:
+                    del request.session['coupon_code']
+                if 'coupon_discount' in request.session:
+                    del request.session['coupon_discount']
+        except Coupon.DoesNotExist:
+            if 'coupon_id' in request.session:
+                del request.session['coupon_id']
+            if 'coupon_code' in request.session:
+                del request.session['coupon_code']
+            if 'coupon_discount' in request.session:
+                del request.session['coupon_discount']
+    elif 'coupon_code' in request.session:
+        coupon_code = request.session.get('coupon_code')
+        discount = float(request.session.get('coupon_discount', 0))
+
+    final_total = cart.total_price - discount
+    if final_total < 0:
+        final_total = 0
+
     if request.method == 'POST':
         form = OrderForm(request.POST)
         if form.is_valid():
             order = form.save(commit=False)
             order.user = request.user
-            order.total_amount = cart.total_price
+            order.total_amount = final_total
             order.save()
 
+            # Kupon ishlatilganligini qayd qilish
+            if coupon:
+                UserCoupon.objects.create(
+                    user=request.user,
+                    coupon=coupon,
+                    order=order
+                )
+                coupon.used_count += 1
+                coupon.save()
+
+                # Sessiondan tozalash
+                if 'coupon_code' in request.session:
+                    del request.session['coupon_code']
+                if 'coupon_discount' in request.session:
+                    del request.session['coupon_discount']
+                if 'coupon_id' in request.session:
+                    del request.session['coupon_id']
+
+            # Buyurtma mahsulotlarini saqlash
             for item in cart.items.all():
                 OrderItem.objects.create(
                     order=order,
@@ -415,14 +609,18 @@ def checkout_view(request):
                     price=item.product.price
                 )
 
+                # Mahsulot sonini kamaytirish
                 product = item.product
                 product.stock -= item.quantity
                 product.save()
 
+            # Savatni tozalash
             cart.items.all().delete()
 
-            messages.success(request, f'Buyurtma qabul qilindi! Buyurtma raqami: #{order.id}')
+            messages.success(request, f'✅ Buyurtma qabul qilindi! Buyurtma raqami: #{order.id}')
             return redirect('shop:order_success', order_id=order.id)
+        else:
+            messages.error(request, 'Xatolik yuz berdi. Iltimos, ma\'lumotlarni to\'g\'ri kiriting!')
     else:
         initial_data = {}
         if request.user.full_name:
@@ -436,12 +634,15 @@ def checkout_view(request):
         'form': form,
         'cart_total_items': cart.total_items,
         'wishlist_count': get_wishlist_count(request),
+        'discount': discount,
+        'final_total': final_total,
+        'coupon_code': coupon_code,
     }
     return render(request, 'shop/checkout.html', context)
 
 
 def order_success_view(request, order_id):
-    """Buyurtma muvaffaqiyatli sahifasi - login tekshiruvi"""
+    """Buyurtma muvaffaqiyatli sahifasi"""
     if not request.user.is_authenticated:
         return redirect('accounts:login')
 
@@ -454,7 +655,7 @@ def order_success_view(request, order_id):
 
 
 def my_orders_view(request):
-    """Foydalanuvchi buyurtmalari - login tekshiruvi"""
+    """Foydalanuvchi buyurtmalari"""
     if not request.user.is_authenticated:
         messages.warning(request, 'Buyurtmalaringizni ko\'rish uchun tizimga kiring!')
         return redirect('accounts:login')
@@ -466,3 +667,94 @@ def my_orders_view(request):
         'wishlist_count': get_wishlist_count(request),
     }
     return render(request, 'shop/my_orders.html', context)
+
+
+# ========== REVIEWS VIEWS ==========
+
+@login_required
+def add_review_view(request, product_id):
+    """Sharh qo'shish"""
+    product = get_object_or_404(Product, id=product_id, is_available=True)
+
+    existing_review = Review.objects.filter(product=product, user=request.user).first()
+    if existing_review:
+        messages.error(request, 'Siz bu mahsulotga allaqachon sharh yozgansiz!')
+        return redirect('shop:product_detail', category_slug=product.category.slug, product_slug=product.slug)
+
+    if request.method == 'POST':
+        rating = request.POST.get('rating')
+        comment = request.POST.get('comment')
+
+        if rating and comment:
+            review = Review.objects.create(
+                product=product,
+                user=request.user,
+                rating=int(rating),
+                comment=comment
+            )
+            messages.success(request, 'Sharhingiz qabul qilindi! Rahmat!')
+        else:
+            if not rating:
+                messages.error(request, 'Iltimos, mahsulotni baholang!')
+            elif not comment:
+                messages.error(request, 'Iltimos, sharhingizni yozing!')
+
+    return redirect('shop:product_detail', category_slug=product.category.slug, product_slug=product.slug)
+
+
+@login_required
+def edit_review_view(request, review_id):
+    """Sharhni tahrirlash"""
+    review = get_object_or_404(Review, id=review_id, user=request.user)
+    product = review.product
+
+    if request.method == 'POST':
+        rating = request.POST.get('rating')
+        comment = request.POST.get('comment')
+
+        if rating and comment:
+            review.rating = int(rating)
+            review.comment = comment
+            review.save()
+            messages.success(request, 'Sharhingiz muvaffaqiyatli yangilandi!')
+        else:
+            messages.error(request, 'Iltimos, barcha maydonlarni to\'ldiring!')
+
+        return redirect('shop:product_detail', category_slug=product.category.slug, product_slug=product.slug)
+
+    context = {
+        'review': review,
+        'product': product,
+    }
+    return render(request, 'shop/edit_review.html', context)
+
+
+@login_required
+def delete_review_view(request, review_id):
+    """Sharhni o'chirish"""
+    review = get_object_or_404(Review, id=review_id, user=request.user)
+    product = review.product
+    review.delete()
+    messages.success(request, 'Sharhingiz muvaffaqiyatli o\'chirildi!')
+    return redirect('shop:product_detail', category_slug=product.category.slug, product_slug=product.slug)
+
+
+def product_reviews_view(request, product_id):
+    """Mahsulotning barcha sharhlari (AJAX)"""
+    product = get_object_or_404(Product, id=product_id)
+    reviews = Review.objects.filter(product=product, is_approved=True).order_by('-created_at')
+
+    data = {
+        'reviews': [
+            {
+                'user': review.user.phone_number,
+                'rating': review.rating,
+                'comment': review.comment,
+                'created_at': review.created_at.strftime('%d.%m.%Y %H:%M'),
+            }
+            for review in reviews
+        ],
+        'avg_rating': reviews.aggregate(models.Avg('rating'))['rating__avg'] or 0,
+        'total_reviews': reviews.count()
+    }
+    return JsonResponse(data)

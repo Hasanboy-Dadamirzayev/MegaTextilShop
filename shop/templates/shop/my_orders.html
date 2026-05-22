@@ -57,7 +57,7 @@
                             </div>
                             <div class="col-md-6">
                                 <h6 class="text-muted">Aloqa:</h6>
-                                <p class="small">{{ order.phone }}</p>
+                                <p class="small">+998 77 218 35 35</p>
                                 {% if order.notes %}
                                 <h6 class="text-muted mt-2">Izoh:</h6>
                                 <p class="small">{{ order.notes }}</p>
@@ -83,7 +83,7 @@
 <script>
     function toggleOrderDetails(orderId) {
         const details = document.getElementById(`order-details-${orderId}`);
-        if (details.style.display === 'none') {
+        if (details.style.display === 'none' || details.style.display === '') {
             details.style.display = 'block';
         } else {
             details.style.display = 'none';

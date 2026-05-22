@@ -25,4 +25,13 @@ urlpatterns = [
     path('wishlist/add/', views.wishlist_add_view, name='wishlist_add'),
     path('wishlist/remove/<int:product_id>/', views.wishlist_remove_view, name='wishlist_remove'),
     path('wishlist/status/', views.get_wishlist_status, name='wishlist_status'),
+
+    path('review/add/<int:product_id>/', views.add_review_view, name='add_review'),
+    path('review/edit/<int:review_id>/', views.edit_review_view, name='edit_review'),
+    path('review/delete/<int:review_id>/', views.delete_review_view, name='delete_review'),
+
+
+    # Kuponlar
+    path('apply-coupon/', views.apply_coupon_view, name='apply_coupon'),
+    path('remove-coupon/', views.remove_coupon_view, name='remove_coupon'),
 ]

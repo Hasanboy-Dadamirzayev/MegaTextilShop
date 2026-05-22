@@ -1,20 +1,19 @@
 from django.apps import AppConfig
 import os
 
-
 class BotConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
     name = 'bot'
 
     def ready(self):
         """Django ishga tushganda botni ishga tushirish"""
-        # Faqat asosiy threadda va runserver da ishga tushsin
-        if os.environ.get('RUN_MAIN') == 'true' or not os.environ.get('RUN_MAIN'):
+        # FAQAT asosiy threadda va RUN_MAIN 'true' bo'lganda
+        if os.environ.get('RUN_MAIN') == 'true':
             import threading
             import time
 
             def start_bot_delayed():
-                time.sleep(2)  # Django to'liq ishga tushguncha kutish
+                time.sleep(2)
                 try:
                     from .bot import run_bot_async
                     run_bot_async()
@@ -23,3 +22,4 @@ class BotConfig(AppConfig):
 
             thread = threading.Thread(target=start_bot_delayed, daemon=True)
             thread.start()
+            print("✅ Bot ishga tushirildi (1 marta)")

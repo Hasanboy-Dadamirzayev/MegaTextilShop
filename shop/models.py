@@ -101,6 +101,109 @@ class CartItem(models.Model):
         return self.product.price * self.quantity
 
 
+class Review(models.Model):
+    """Mahsulotga baho va sharh"""
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='reviews')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reviews')
+    rating = models.IntegerField(choices=[(1, '1 ★'), (2, '2 ★'), (3, '3 ★'), (4, '4 ★'), (5, '5 ★')])
+    comment = models.TextField(verbose_name="Sharh")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    is_approved = models.BooleanField(default=True, verbose_name="Tasdiqlangan")  # Admin tasdiqlashi mumkin
+
+    class Meta:
+        verbose_name = "Sharh"
+        verbose_name_plural = "Sharhlar"
+        ordering = ['-created_at']
+        unique_together = ['product', 'user']  # Bir foydalanuvchi bir mahsulotga bir marta sharh yozishi mumkin
+
+    def __str__(self):
+        return f"{self.user.phone_number} - {self.product.name} - {self.rating}★"
+
+
+class Coupon(models.Model):
+    """Chegirma kuponlari"""
+    DISCOUNT_TYPE_CHOICES = [
+        ('percent', 'Foizli chegirma (%)'),
+        ('fixed', 'Belgilangan summa (so\'m)'),
+        ('free_shipping', 'Bepul yetkazib berish'),
+    ]
+
+    code = models.CharField(max_length=50, unique=True, verbose_name="Kupon kodi")
+    discount_type = models.CharField(max_length=20, choices=DISCOUNT_TYPE_CHOICES, default='percent',
+                                     verbose_name="Chegirma turi")
+    discount_value = models.DecimalField(max_digits=10, decimal_places=2, default=0, verbose_name="Chegirma qiymati")
+
+    # Amal qilish vaqti
+    valid_from = models.DateTimeField(verbose_name="Amal qilish boshlanishi")
+    valid_to = models.DateTimeField(verbose_name="Amal qilish tugashi")
+
+    # Cheklovlar
+    min_order_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0,
+                                           verbose_name="Minimal buyurtma summasi")
+    max_discount_amount = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True,
+                                              verbose_name="Maksimal chegirma summasi")
+    usage_limit = models.IntegerField(default=1, verbose_name="Ishlatilish chegarasi")
+    used_count = models.IntegerField(default=0, verbose_name="Ishlatilgan soni")
+
+    # Qaysi foydalanuvchilar uchun (null = hamma uchun)
+    users = models.ManyToManyField(User, blank=True, verbose_name="Foydalanuvchilar")
+
+    # Holati
+    is_active = models.BooleanField(default=True, verbose_name="Faol")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Kupon"
+        verbose_name_plural = "Kuponlar"
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.code} - {self.get_discount_type_display()}"
+
+    @property
+    def is_valid(self):
+        """Kupon amal qilish muddatini tekshirish"""
+        from django.utils import timezone
+        now = timezone.now()
+        return (self.is_active and
+                self.valid_from <= now <= self.valid_to and
+                (self.usage_limit > self.used_count))
+
+    def calculate_discount(self, cart_total):
+        """Chegirma summasini hisoblash"""
+        if not self.is_valid:
+            return 0
+
+        if cart_total < self.min_order_amount:
+            return 0
+
+        if self.discount_type == 'percent':
+            discount = cart_total * self.discount_value / 100
+        elif self.discount_type == 'fixed':
+            discount = self.discount_value
+        else:  # free_shipping
+            discount = 0  # Yetkazib berish narxi alohida hisoblanadi
+
+        # Maksimal chegirma chegarasi
+        if self.max_discount_amount and discount > self.max_discount_amount:
+            discount = self.max_discount_amount
+
+        return discount
+
+
+class UserCoupon(models.Model):
+    """Foydalanuvchi ishlatgan kuponlar"""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='used_coupons')
+    coupon = models.ForeignKey(Coupon, on_delete=models.CASCADE)
+    order = models.ForeignKey('Order', on_delete=models.CASCADE, null=True, blank=True)
+    used_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ['user', 'coupon']
+
+    def __str__(self):
+        return f"{self.user.phone_number} - {self.coupon.code}"
 
 
 class Wishlist(models.Model):
