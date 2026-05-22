@@ -10,6 +10,8 @@ SECRET_KEY = 'django-insecure-your-secret-key'
 
 
 
+
+
 DEBUG = True
 
 ALLOWED_HOSTS = []
