@@ -1,0 +1,47 @@
+{% extends 'shop/base.html' %}
+
+{% block content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 style="color: #1a2e1f;"><i class="fas fa-tags me-2"></i>Barcha kategoriyalar</h2>
+        <span class="text-muted">{{ categories|length }} ta kategoriya</span>
+    </div>
+
+    {% if categories %}
+    <div class="row g-4">
+        {% for category in categories %}
+        <div class="col-6 col-md-4 col-lg-3">
+            <a href="{% url 'shop:category_products' category.slug %}" class="text-decoration-none">
+                <div class="card h-100 border-0 shadow-sm rounded-4 category-card text-center p-4">
+                    {% if category.image %}
+                    <img src="{{ category.image.url }}" alt="{{ category.name }}" class="mx-auto mb-3" style="width: 80px; height: 80px; object-fit: cover; border-radius: 50%;">
+                    {% else %}
+                    <div class="mx-auto mb-3 bg-light rounded-circle d-flex align-items-center justify-content-center" style="width: 80px; height: 80px;">
+                        <i class="fas fa-folder-open fa-3x text-muted"></i>
+                    </div>
+                    {% endif %}
+                    <h5 class="text-dark mb-2">{{ category.name }}</h5>
+                    <p class="text-muted small">{{ category.products.count }} ta mahsulot</p>
+                </div>
+            </a>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="text-center py-5">
+        <i class="fas fa-folder-open fa-4x text-muted mb-3"></i>
+        <h4 class="text-muted">Hech qanday kategoriya topilmadi</h4>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+    .category-card {
+        transition: all 0.2s ease;
+    }
+    .category-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 12px 24px rgba(0,0,0,0.1) !important;
+    }
+</style>
+{% endblock %}

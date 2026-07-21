@@ -65,7 +65,10 @@
                     <h5 class="mb-3">Buyurtma haqida</h5>
                     {% for item in cart.items.all %}
                     <div class="d-flex justify-content-between mb-2">
-                        <span>{{ item.product.name|truncatechars:30 }} x {{ item.quantity }}</span>
+                        <span>{{ item.product.name|truncatechars:30 }}
+                            {% if item.size %}({{ item.size }}){% endif %}
+                            x {{ item.quantity }}
+                        </span>
                         <span>{{ item.total_price|floatformat:0 }} so'm</span>
                     </div>
                     {% endfor %}

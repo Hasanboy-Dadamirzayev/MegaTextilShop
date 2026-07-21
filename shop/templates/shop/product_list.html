@@ -130,16 +130,20 @@
                                     <span class="badge bg-danger">{{ product.discount_percent }}%</span>
                                     {% endif %}
                                 </div>
-                                {% if product.stock < 5 and product.stock > 0 %}
-                                <small class="text-warning d-block mt-1">⚠️ Qolgani {{ product.stock }} dona</small>
-                                {% elif product.stock == 0 %}
+                                <!-- TOTAL_STOCK dan foydalaning -->
+                                {% if product.total_stock < 5 and product.total_stock > 0 %}
+                                <small class="text-warning d-block mt-1">⚠️ Qolgani {{ product.total_stock }} dona</small>
+                                {% elif product.total_stock == 0 %}
                                 <small class="text-danger d-block mt-1">❌ Soni tugagan</small>
+                                {% else %}
+                                <small class="text-success d-block mt-1">✅ Mavjud ({{ product.total_stock }} dona)</small>
                                 {% endif %}
                             </div>
                         </a>
                         <div class="card-footer bg-transparent border-0 pb-3">
                             <div class="d-flex gap-2" style="flex-wrap: nowrap;">
-                                {% if product.stock > 0 %}
+                                <!-- TOTAL_STOCK ga qarab tekshirish -->
+                                {% if product.total_stock > 0 %}
                                 <button class="btn-primary-custom add-to-cart-btn" data-product-id="{{ product.id }}" style="padding: 0.5rem; flex: 1;">
                                     <i class="fas fa-cart-plus me-1"></i> Savatga
                                 </button>

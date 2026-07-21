@@ -34,4 +34,12 @@ urlpatterns = [
     # Kuponlar
     path('apply-coupon/', views.apply_coupon_view, name='apply_coupon'),
     path('remove-coupon/', views.remove_coupon_view, name='remove_coupon'),
+
+    path('api/get-sizes/', views.get_sizes_api, name='get_sizes_api'),
+
+
+    #categories
+    path('categories/', views.categories_view, name='categories'),
+
+    path('telegram-settings/', views.telegram_settings_view, name='telegram_settings'),
 ]

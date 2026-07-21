@@ -285,8 +285,12 @@
                     <a class="nav-link {% if request.resolver_match.url_name == 'index' %}active{% endif %}" href="{% url 'shop:index' %}">Bosh sahifa</a>
                 </li>
                 <li class="nav-item">
+                    <a class="nav-link {% if request.resolver_match.url_name == 'categories' %}active{% endif %}" href="{% url 'shop:categories' %}">Kategoriyalar</a>
+                </li>
+                <li class="nav-item">
                     <a class="nav-link {% if request.resolver_match.url_name == 'product_list' %}active{% endif %}" href="{% url 'shop:product_list' %}">Mahsulotlar</a>
                 </li>
+
                 {% if user.is_authenticated %}
                 <li class="nav-item">
                     <a class="nav-link {% if request.resolver_match.url_name == 'my_orders' %}active{% endif %}" href="{% url 'shop:my_orders' %}">Buyurtmalarim</a>
@@ -356,6 +360,7 @@
                 <h5>Tez havolalar</h5>
                 <ul class="list-unstyled">
                     <li><a href="{% url 'shop:index' %}">Bosh sahifa</a></li>
+                    <li><a href="{% url 'shop:categories' %}">Kategoriyalar</a></li>
                     <li><a href="{% url 'shop:product_list' %}">Mahsulotlar</a></li>
                     {% if user.is_authenticated %}
                     <li><a href="{% url 'shop:my_orders' %}">Buyurtmalarim</a></li>

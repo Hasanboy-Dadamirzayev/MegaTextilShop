@@ -23,22 +23,47 @@
                         <div class="col-5 col-md-5">
                             <a href="{{ item.product.get_absolute_url }}" class="text-decoration-none text-dark">
                                 <h6 class="mb-1">{{ item.product.name|truncatechars:40 }}</h6>
+                                {% if item.size %}
+                                <small class="text-muted">O'lcham: <strong>{{ item.size }}</strong></small>
+                                {% endif %}
+                                {% if item.color %}
+                                <small class="text-muted ms-2">Rang: <strong>{{ item.color }}</strong></small>
+                                {% endif %}
                             </a>
                             <div class="text-success fw-bold">{{ item.product.price|floatformat:0 }} so'm</div>
                         </div>
                         <div class="col-2 col-md-3">
                             <div class="d-flex align-items-center gap-2">
-                                <button class="btn btn-sm btn-outline-secondary" onclick="updateQuantity({{ item.id }}, {{ item.quantity|add:-1 }})">-</button>
-                                <input type="number" id="qty-{{ item.id }}" value="{{ item.quantity }}" class="form-control text-center" style="width: 50px;" min="1" max="{{ item.product.stock }}">
-                                <button class="btn btn-sm btn-outline-secondary" onclick="updateQuantity({{ item.id }}, {{ item.quantity|add:1 }})">+</button>
+                                <button class="btn btn-sm btn-outline-secondary decrement-btn"
+                                        data-item-id="{{ item.id }}"
+                                        data-current-qty="{{ item.quantity }}"
+                                        {% if item.quantity <= 1 %}disabled{% endif %}
+                                        style="width: 32px; height: 32px; padding: 0; border-radius: 8px;">
+                                    <i class="fas fa-minus"></i>
+                                </button>
+                                <input type="number" id="qty-{{ item.id }}"
+                                       value="{{ item.quantity }}"
+                                       class="form-control text-center quantity-input"
+                                       style="width: 60px; height: 32px; padding: 0; font-size: 14px; font-weight: 500;"
+                                       min="1"
+                                       max="{{ item.product.total_stock }}"
+                                       data-item-id="{{ item.id }}"
+                                       data-max-stock="{{ item.product.total_stock }}">
+                                <button class="btn btn-sm btn-outline-secondary increment-btn"
+                                        data-item-id="{{ item.id }}"
+                                        data-current-qty="{{ item.quantity }}"
+                                        data-max-stock="{{ item.product.total_stock }}"
+                                        {% if item.quantity >= item.product.total_stock %}disabled{% endif %}
+                                        style="width: 32px; height: 32px; padding: 0; border-radius: 8px;">
+                                    <i class="fas fa-plus"></i>
+                                </button>
                             </div>
                         </div>
                         <div class="col-2 col-md-2 text-end">
                             <div class="fw-bold text-success">{{ item.total_price|floatformat:0 }} so'm</div>
-<button class="btn text-decoration-none p-2 mt-1 remove-btn" style="margin-right: 6px;"
-        onclick="removeItem({{ item.id }})">
-    <i class="fas fa-trash-alt"></i> O'chirish
-</button>
+                            <button class="btn btn-link text-danger p-0 mt-1 remove-item-btn" data-item-id="{{ item.id }}">
+                                <i class="fas fa-trash-alt"></i> O'chirish
+                            </button>
                         </div>
                     </div>
                     {% endfor %}
@@ -52,9 +77,7 @@
                 <div class="card-body p-4">
                     <h5 class="mb-3"><i class="fas fa-ticket-alt me-2"></i>Kupon kodi</h5>
 
-                    <!-- Kupon aktiv bo'lsa -->
                     {% if coupon_code %}
-                    <!-- 1-QISM: Kupon ma'lumotlari (alohida dizayn) -->
                     <div class="coupon-info-box">
                         <div class="coupon-check-icon">
                             <i class="fas fa-check-circle"></i>
@@ -73,15 +96,12 @@
                             </div>
                         </div>
                     </div>
-
-                    <!-- 2-QISM: Olib tashlash tugmasi (alohida dizayn) -->
                     <button class="coupon-remove-button" id="removeCouponBtn">
                         <i class="fas fa-times"></i>
                         <span>Olib tashlash</span>
                     </button>
                     {% endif %}
 
-                    <!-- Kupon kiritish formasi -->
                     <div id="couponFormSection" {% if coupon_code %}style="display: none;"{% endif %}>
                         <div class="input-group">
                             <input type="text" id="couponCode" class="form-control" placeholder="Kupon kodini kiriting" style="border-radius: 12px 0 0 12px;">
@@ -145,7 +165,6 @@
 </div>
 
 <style>
-    /* 1-QISM: Kupon ma'lumotlari uchun alohida dizayn */
     .coupon-info-box {
         background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
         border-radius: 16px;
@@ -157,7 +176,6 @@
         border: 1px solid #a5d6a7;
         box-shadow: 0 2px 8px rgba(0,0,0,0.05);
     }
-
     .coupon-check-icon {
         background: #2e7d32;
         width: 40px;
@@ -168,72 +186,33 @@
         justify-content: center;
         flex-shrink: 0;
     }
-
     .coupon-check-icon i {
         color: white;
         font-size: 20px;
     }
-
     .coupon-content {
         flex: 1;
     }
-
     .coupon-status {
         font-size: 15px;
         color: #1b5e20;
         margin-bottom: 8px;
     }
-
     .coupon-detail-row {
         display: flex;
         align-items: baseline;
         gap: 8px;
         margin-top: 4px;
     }
-.remove-btn {
-    border: 1px solid #dc3545;
-    border-radius: 8px;
-    background: transparent;
-    font-size: 13px;
-    line-height: 1.2;
-    color: #dc3545 !important;
-    transition: all 0.3s ease;
-}
-
-.remove-btn i {
-    color: #dc3545 !important;
-}
-
-.remove-btn:hover {
-    background-color: #dc3545;
-    color: #ffffff !important;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 10px rgba(220, 53, 69, 0.3);
-}
-
-.remove-btn:hover i {
-    color: #ffffff !important;
-}
-
-.remove-btn:active {
-    transform: scale(0.96);
-}
-
-    .btn-link:hover {
-        text-decoration: none !important;
-    }
-
     .detail-label {
         font-size: 13px;
         color: #6c757d;
         min-width: 60px;
     }
-
     .detail-value {
         font-size: 14px;
         font-weight: 600;
     }
-
     .coupon-code-value {
         color: #2e7d32;
         background: #ffffff;
@@ -242,13 +221,10 @@
         font-family: monospace;
         letter-spacing: 1px;
     }
-
     .coupon-discount-value {
         color: #e91e63;
         font-size: 16px;
     }
-
-    /* 2-QISM: Olib tashlash tugmasi uchun alohida dizayn */
     .coupon-remove-button {
         background: white;
         border: 1.5px solid #dc3545;
@@ -266,7 +242,6 @@
         gap: 8px;
         background: #fff5f5;
     }
-
     .coupon-remove-button:hover {
         background: #dc3545;
         color: white;
@@ -274,44 +249,30 @@
         transform: translateY(-2px);
         box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
     }
-
-    .coupon-remove-button:active {
-        transform: translateY(0);
+    .increment-btn:disabled, .decrement-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
     }
-
-    .coupon-remove-button i {
-        font-size: 14px;
+    .remove-item-btn {
+        cursor: pointer;
+    }
+    .remove-item-btn:hover {
+        text-decoration: underline;
+        opacity: 0.8;
+    }
+    .quantity-input:focus {
+        border-color: #2e7d32;
+        outline: none;
+        box-shadow: 0 0 0 2px rgba(46, 125, 50, 0.2);
+    }
+    /* Chrome, Safari, Edge, Opera da spinner ni o'chirish */
+    .quantity-input::-webkit-inner-spin-button,
+    .quantity-input::-webkit-outer-spin-button {
+        opacity: 0.5;
     }
 </style>
 
 <script>
-    function updateQuantity(itemId, newQuantity) {
-        if (newQuantity < 1) return;
-
-        fetch("{% url 'shop:cart_update' 0 %}".replace('0', itemId), {
-            method: "POST",
-            headers: {
-                'X-CSRFToken': getCookie('csrftoken'),
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({quantity: newQuantity})
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                location.reload();
-            } else {
-                showToast(data.message, 'error');
-            }
-        });
-    }
-
-    function removeItem(itemId) {
-        if (confirm("Mahsulotni savatdan o'chirmoqchimisiz?")) {
-            window.location.href = "{% url 'shop:cart_remove' 0 %}".replace('0', itemId);
-        }
-    }
-
     function getCookie(name) {
         let cookieValue = null;
         if (document.cookie && document.cookie !== '') {
@@ -345,6 +306,109 @@
             toast.style.transition = 'all 0.3s ease';
             setTimeout(() => toast.remove(), 300);
         }, 3000);
+    }
+
+    // Sonni oshirish
+    document.querySelectorAll('.increment-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const itemId = this.dataset.itemId;
+            const currentQty = parseInt(this.dataset.currentQty);
+            const maxStock = parseInt(this.dataset.maxStock);
+            const newQty = currentQty + 1;
+
+            if (newQty <= maxStock) {
+                updateQuantity(itemId, newQty);
+            } else {
+                showToast(`Kechirasiz, omborda faqat ${maxStock} dona qoldi!`, 'error');
+            }
+        });
+    });
+
+    // Sonni kamaytirish
+    document.querySelectorAll('.decrement-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const itemId = this.dataset.itemId;
+            const currentQty = parseInt(this.dataset.currentQty);
+            const newQty = currentQty - 1;
+
+            if (newQty >= 1) {
+                updateQuantity(itemId, newQty);
+            }
+        });
+    });
+
+    // Input orqali sonni o'zgartirish (qo'lda yozish)
+    document.querySelectorAll('.quantity-input').forEach(input => {
+        input.addEventListener('change', function() {
+            const itemId = this.dataset.itemId;
+            const maxStock = parseInt(this.dataset.maxStock);
+            let newQty = parseInt(this.value);
+
+            // Qiymatni tekshirish
+            if (isNaN(newQty) || newQty < 1) {
+                newQty = 1;
+            }
+            if (newQty > maxStock) {
+                newQty = maxStock;
+                showToast(`Kechirasiz, omborda faqat ${maxStock} dona qoldi!`, 'error');
+            }
+
+            this.value = newQty;
+
+            if (newQty !== parseInt(this.defaultValue)) {
+                updateQuantity(itemId, newQty);
+            }
+        });
+
+        // Enter tugmasi bosilganda
+        input.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                this.blur();
+            }
+        });
+    });
+
+    // Mahsulotni o'chirish
+    document.querySelectorAll('.remove-item-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const itemId = this.dataset.itemId;
+            if (confirm("Mahsulotni savatdan o'chirmoqchimisiz?")) {
+                window.location.href = "{% url 'shop:cart_remove' 0 %}".replace('0', itemId);
+            }
+        });
+    });
+
+    function updateQuantity(itemId, newQuantity) {
+        // Disable tugmalarni vaqtincha
+        const btns = document.querySelectorAll(`.increment-btn[data-item-id="${itemId}"], .decrement-btn[data-item-id="${itemId}"]`);
+        const input = document.querySelector(`#qty-${itemId}`);
+
+        btns.forEach(btn => btn.disabled = true);
+        if (input) input.disabled = true;
+
+        fetch("{% url 'shop:cart_update' 0 %}".replace('0', itemId), {
+            method: "POST",
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({quantity: newQuantity})
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                showToast(data.message, 'error');
+                btns.forEach(btn => btn.disabled = false);
+                if (input) input.disabled = false;
+            }
+        })
+        .catch(error => {
+            showToast('Xatolik yuz berdi', 'error');
+            btns.forEach(btn => btn.disabled = false);
+            if (input) input.disabled = false;
+        });
     }
 
     // Kupon qo'llash

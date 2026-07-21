@@ -8,13 +8,22 @@ SECRET_KEY = 'django-insecure-your-secret-key'
 
 
 
-
+TELEGRAM_BOT_TOKEN = '8782733886:AAGP0v6M8r3G6BKovlQYFm4XRzcFlJRCKRI'
+TELEGRAM_BOT_USERNAME = 'megasavdohub_bot'
 
 
 
 DEBUG = True
 
-ALLOWED_HOSTS = []
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE = True
+
+ALLOWED_HOSTS = ["*"]
+
+CSRF_TRUSTED_ORIGINS = [
+    'https://*.ngrok-free.app',
+    'https://*.ngrok-free.dev',
+]
 
 INSTALLED_APPS = [
     'django.contrib.admin',

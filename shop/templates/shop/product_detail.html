@@ -63,9 +63,48 @@
                 <a href="{% url 'shop:category_products' product.category.slug %}" class="text-decoration-none">{{ product.category.name }}</a>
             </div>
 
+            <!-- Rang tanlash -->
+            {% if available_colors %}
             <div class="mb-3">
-                {% if product.stock > 0 %}
-                <span class="text-success"><i class="fas fa-check-circle me-1"></i> Mavjud ({{ product.stock }} dona)</span>
+                <label class="form-label fw-semibold mb-2">Rang tanlang:</label>
+                <div class="d-flex flex-wrap gap-2 mt-2" id="colorContainer">
+                    {% for color in available_colors %}
+                    <button type="button"
+                            class="color-btn btn btn-outline-secondary"
+                            data-color="{{ color }}">
+                        <span class="color-dot" style="background-color:
+                            {% if color == 'Qora' %}black
+                            {% elif color == 'Oq' %}white; border:1px solid #ddd
+                            {% elif color == 'Qizil' %}red
+                            {% elif color == "Ko'k" %}#87CEFA
+                            {% elif color == 'Yashil' %}green
+                            {% elif color == 'Sariq' %}gold
+                            {% elif color == 'Pushti' %}hotpink
+                            {% elif color == 'Jigarrang' %}#964B00
+                            {% elif color == 'Kulrang' %}gray
+                            {% elif color == 'Qaymoq' %}#FFFDD0
+                            {% else %}#2e7d32{% endif %};"></span>
+                        {{ color }}
+                    </button>
+                    {% endfor %}
+                </div>
+                <input type="hidden" id="selectedColor" name="color" value="">
+            </div>
+            {% endif %}
+
+            <!-- O'lcham tanlash -->
+            <div class="mb-3" id="sizeSection" style="display: none;">
+                <label class="form-label fw-semibold mb-2"> O'lcham tanlang:</label>
+                <div class="d-flex flex-wrap gap-2 mt-2" id="sizeContainer">
+                    <!-- O'lchamlar JS orqali chiqadi -->
+                </div>
+                <input type="hidden" id="selectedSize" name="size" value="">
+                <div class="variant-stock-info mt-2"></div>
+            </div>
+
+            <div class="mb-3">
+                {% if product.total_stock > 0 %}
+                <span class="text-success"><i class="fas fa-check-circle me-1"></i> Mavjud ({{ product.total_stock }} dona)</span>
                 {% else %}
                 <span class="text-danger"><i class="fas fa-times-circle me-1"></i> Soni tugagan</span>
                 {% endif %}
@@ -76,21 +115,21 @@
                 <p class="text-muted">{{ product.description|linebreaks }}</p>
             </div>
 
-            {% if product.stock > 0 %}
-            <div class="d-flex gap-3 align-items-center mb-4" style="flex-wrap: nowrap;">
+            {% if product.total_stock > 0 %}
+            <div class="d-flex gap-2 align-items-center mb-4 flex-wrap">
                 <div class="d-flex align-items-center border rounded-3 overflow-hidden" style="flex-shrink: 0;">
                     <button class="btn btn-light border-0 px-3" type="button" onclick="decrementQuantity()">-</button>
-                    <input type="number" id="quantity" value="1" min="1" max="{{ product.stock }}" class="form-control text-center border-0" style="width: 60px;">
+                    <input type="number" id="quantity" value="1" min="1" max="{{ product.total_stock }}" class="form-control text-center border-0" style="width: 60px;">
                     <button class="btn btn-light border-0 px-3" type="button" onclick="incrementQuantity()">+</button>
                 </div>
-                <button class="btn-primary-custom px-4 py-2" id="addToCartBtn" type="button" style="flex-shrink: 0;">
+                <button class="btn-primary-custom px-3 py-2 flex-grow-1" id="addToCartBtn" type="button">
                     <i class="fas fa-cart-plus me-2"></i> Savatga qo'shish
                 </button>
-                <button class="btn-outline-custom wishlist-btn px-4 py-2" data-product-id="{{ product.id }}" type="button" style="flex-shrink: 0; {% if is_wishlisted %}background: #e91e63; color: white; border-color: #e91e63;{% endif %}">
+                <button class="btn-outline-custom wishlist-btn px-3 py-2" data-product-id="{{ product.id }}" type="button" style="{% if is_wishlisted %}background: #e91e63; color: white; border-color: #e91e63;{% endif %}">
                     <i class="fas fa-heart me-2"></i>
                     <span class="wishlist-text">{% if is_wishlisted %}Yoqtirilgan{% else %}Yoqtirish{% endif %}</span>
                 </button>
-                <button class="btn-outline-custom px-4 py-2" id="buyNowBtn" type="button" style="flex-shrink: 0;">
+                <button class="btn-outline-custom px-3 py-2" id="buyNowBtn" type="button">
                     <i class="fas fa-bolt me-2"></i> Sotib olish
                 </button>
             </div>
@@ -200,7 +239,7 @@
             </div>
         </div>
 
-        <!-- Sharh yozish formasi - Play Market uslubida -->
+        <!-- Sharh yozish formasi -->
         {% if user.is_authenticated %}
             {% if user_review %}
                 <div class="alert alert-info mb-4">
@@ -210,9 +249,11 @@
                     <a href="{% url 'shop:delete_review' user_review.id %}" class="alert-link text-danger" onclick="return confirm('Sharhni o\'chirmoqchimisiz?')">O'chirish</a>
                 </div>
             {% else %}
+                {% if can_review %}
                 <div class="card border-0 shadow-sm rounded-4 mb-4">
                     <div class="card-body p-4">
-                        <h5 class="mb-3"><i class="me-2"></i>Sharh yozish</h5>
+                        <h5 class="mb-3"><i class="fas fa-comment me-2"></i>Sharh yozish</h5>
+                        <p class="text-success small mb-3">✅ Siz bu mahsulotni sotib olgansiz va yetkazib berilgan. Fikringiz biz uchun muhim!</p>
 
                         <form method="post" action="{% url 'shop:add_review' product.id %}" id="reviewForm">
                             {% csrf_token %}
@@ -230,7 +271,7 @@
                                     </div>
                                     <input type="hidden" name="rating" id="ratingValue" required>
                                     <div class="rating-message mt-3">
-                                        <span class="rating-text text-muted">⭐ Baholash uchun yulduzni bosing</span>
+                                        <span class="rating-text text-muted">⭐ Mahsulotni baholash uchun yulduzni bosing</span>
                                     </div>
                                 </div>
                             </div>
@@ -251,31 +292,33 @@
                 <style>
                     .play-market-stars {
                         text-align: center;
-                        padding: 10px 0;
+                        padding: 15px 0;
                     }
                     .stars-container {
                         display: inline-flex;
-                        gap: 12px;
+                        gap: 15px;
                         direction: ltr;
                     }
                     .stars-container i {
-                        font-size: 42px;
+                        font-size: 48px;
                         cursor: pointer;
                         transition: all 0.2s ease;
                         color: #d3d3d3;
                     }
-                    .stars-container i:hover,
-                    .stars-container i.active {
-                        color: #ffc107;
+                    .stars-container i:hover {
+                        color: #ffc107 !important;
                     }
                     .stars-container i:hover ~ i {
-                        color: #d3d3d3;
+                        color: #d3d3d3 !important;
+                    }
+                    .stars-container i.active {
+                        color: #ffc107 !important;
                     }
                     .rating-message {
-                        min-height: 50px;
+                        min-height: 55px;
                     }
                     .rating-text {
-                        font-size: 14px;
+                        font-size: 15px;
                         font-weight: 500;
                     }
                     .rating-text.rated {
@@ -291,32 +334,55 @@
                         const submitBtn = document.getElementById('submitReviewBtn');
                         let currentRating = 0;
 
-                        // Yulduzga hover effekti
-                        stars.forEach(star => {
+                        stars.forEach((star, index) => {
                             star.addEventListener('mouseenter', function() {
                                 const value = parseInt(this.dataset.value);
-                                highlightStarsHover(value);
+                                for (let i = 0; i < value; i++) {
+                                    stars[i].classList.remove('far');
+                                    stars[i].classList.add('fas');
+                                }
+                                for (let i = value; i < stars.length; i++) {
+                                    stars[i].classList.remove('fas');
+                                    stars[i].classList.add('far');
+                                }
                             });
 
                             star.addEventListener('mouseleave', function() {
                                 if (currentRating > 0) {
-                                    highlightStars(currentRating);
+                                    for (let i = 0; i < currentRating; i++) {
+                                        stars[i].classList.remove('far');
+                                        stars[i].classList.add('fas');
+                                        stars[i].classList.add('active');
+                                    }
+                                    for (let i = currentRating; i < stars.length; i++) {
+                                        stars[i].classList.remove('fas');
+                                        stars[i].classList.remove('active');
+                                        stars[i].classList.add('far');
+                                    }
                                 } else {
                                     stars.forEach(s => {
-                                        s.classList.remove('active');
                                         s.classList.remove('fas');
+                                        s.classList.remove('active');
                                         s.classList.add('far');
                                     });
                                 }
                             });
 
-                            // Yulduzni bosganda
                             star.addEventListener('click', function() {
                                 currentRating = parseInt(this.dataset.value);
                                 ratingInput.value = currentRating;
-                                highlightStars(currentRating);
 
-                                // Rating matnini yangilash
+                                for (let i = 0; i < currentRating; i++) {
+                                    stars[i].classList.remove('far');
+                                    stars[i].classList.add('fas');
+                                    stars[i].classList.add('active');
+                                }
+                                for (let i = currentRating; i < stars.length; i++) {
+                                    stars[i].classList.remove('fas');
+                                    stars[i].classList.remove('active');
+                                    stars[i].classList.add('far');
+                                }
+
                                 const ratingMessages = {
                                     1: '⭐ Juda yomon - Mahsulot kutilganimdan past',
                                     2: '⭐ Yomon - Ko\'p kamchiliklari bor',
@@ -326,43 +392,18 @@
                                 };
                                 ratingTextSpan.innerHTML = ratingMessages[currentRating];
                                 ratingTextSpan.classList.add('rated');
-
-                                // Tugmani faollashtirish
                                 submitBtn.disabled = false;
                             });
                         });
-
-                        // Hover paytida yulduzlarni to'ldirish
-                        function highlightStarsHover(rating) {
-                            stars.forEach(star => {
-                                const value = parseInt(star.dataset.value);
-                                if (value <= rating) {
-                                    star.classList.remove('far');
-                                    star.classList.add('fas');
-                                } else {
-                                    star.classList.remove('fas');
-                                    star.classList.add('far');
-                                }
-                            });
-                        }
-
-                        // Tanlangan yulduzlarni ko'rsatish
-                        function highlightStars(rating) {
-                            stars.forEach(star => {
-                                const value = parseInt(star.dataset.value);
-                                if (value <= rating) {
-                                    star.classList.remove('far');
-                                    star.classList.add('fas');
-                                    star.classList.add('active');
-                                } else {
-                                    star.classList.remove('fas');
-                                    star.classList.remove('active');
-                                    star.classList.add('far');
-                                }
-                            });
-                        }
                     });
                 </script>
+                {% else %}
+                <div class="alert alert-warning mb-4">
+                    <i class="fas fa-info-circle me-2"></i>
+                    <strong>⚠️ Faqat ushbu mahsulotni sotib olgan va yetkazib berilgan foydalanuvchilar sharh yozishi mumkin.</strong>
+                    <br><small>Agar mahsulotni sotib olgan bo'lsangiz va yetkazib berilgan bo'lsa, sharh yozish imkoniyati paydo bo'ladi.</small>
+                </div>
+                {% endif %}
             {% endif %}
         {% else %}
             <div class="alert alert-info mb-4">
@@ -371,15 +412,15 @@
             </div>
         {% endif %}
 
-        <!-- Sharhlar ro'yxati -->
+        <!-- Sharhlar ro'yxati (admin javobi bilan) -->
         {% if reviews %}
             <div class="reviews-list">
-                <h5 class="mb-3"><i class="fas fa-comments me-2"></i>Barcha sharhlar</h5>
+                <h5 class="mb-3"><i class="fas fa-comments me-2"></i>Barcha sharhlar ({{ reviews.count }})</h5>
                 {% for review in reviews %}
-                <div class="border-bottom pb-3 mb-3">
+                <div class="review-item border-bottom pb-3 mb-3">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
-                            <div class="mb-1">
+                            <div class="review-stars mb-1">
                                 {% for i in "12345"|make_list %}
                                     {% if forloop.counter <= review.rating %}
                                         <i class="fas fa-star text-warning"></i>
@@ -390,6 +431,7 @@
                             </div>
                             <strong>{{ review.user.phone_number|slice:":8" }}***</strong>
                             <small class="text-muted ms-2">{{ review.created_at|date:"d.m.Y H:i" }}</small>
+                            <span class="badge bg-success ms-2">✅ Tasdiqlangan xaridor</span>
                         </div>
                         {% if user.is_authenticated and user == review.user %}
                         <div>
@@ -403,6 +445,18 @@
                         {% endif %}
                     </div>
                     <p class="mt-2 mb-0">{{ review.comment }}</p>
+
+                    <!-- Admin javobi -->
+                    {% if review.admin_reply %}
+                    <div class="admin-reply mt-3 p-3 rounded-3" style="background: #f0fdf4; border-left: 3px solid #2e7d32;">
+                        <div class="d-flex align-items-center mb-2">
+                            <i class="fas fa-store text-success me-2"></i>
+                            <strong class="text-success">SavdoHub admini javobi:</strong>
+                            <small class="text-muted ms-2">{{ review.admin_reply_at|date:"d.m.Y H:i" }}</small>
+                        </div>
+                        <p class="mb-0 ms-4">{{ review.admin_reply|linebreaks }}</p>
+                    </div>
+                    {% endif %}
                 </div>
                 {% endfor %}
             </div>
@@ -450,17 +504,247 @@
     .progress-bar {
         border-radius: 10px;
     }
+    .review-item {
+        transition: all 0.2s ease;
+    }
+    .review-item:hover {
+        padding-left: 10px;
+    }
+    .admin-reply {
+        transition: all 0.2s ease;
+    }
+    .admin-reply:hover {
+        background: #e8f5e9 !important;
+        transform: translateX(5px);
+    }
+
+    .btn-primary-custom {
+        background: #2e7d32;
+        color: white;
+        border: none;
+        border-radius: 12px;
+        font-weight: 600;
+        transition: all 0.2s ease;
+        white-space: nowrap;
+    }
+
+    .btn-primary-custom:hover {
+        background: #1b5e20;
+        transform: translateY(-2px);
+    }
+
+    .btn-outline-custom {
+        background: transparent;
+        border: 1.5px solid #2e7d32;
+        color: #2e7d32;
+        border-radius: 12px;
+        font-weight: 600;
+        transition: all 0.2s ease;
+        white-space: nowrap;
+    }
+
+    .btn-outline-custom:hover {
+        background: #2e7d32;
+        color: white;
+        transform: translateY(-2px);
+    }
+
+    .color-btn {
+        transition: all 0.3s ease;
+        border: 1.5px solid #c8e6c9;
+        background: white;
+        color: #2e7d32;
+        font-weight: 500;
+        min-width: 80px;
+        border-radius: 10px;
+        padding: 8px 16px;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+    }
+
+    .color-dot {
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        display: inline-block;
+        border: 1px solid #ddd;
+    }
+
+    .color-btn:hover:not(:disabled) {
+        background: #2e7d32 !important;
+        border-color: #2e7d32 !important;
+        color: white !important;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(46, 125, 50, 0.3);
+    }
+
+    .color-btn.active {
+        background: #2e7d32 !important;
+        border-color: #2e7d32 !important;
+        color: white !important;
+        box-shadow: 0 2px 8px rgba(46, 125, 50, 0.3);
+    }
+
+    .size-btn {
+        transition: all 0.3s ease;
+        border: 1.5px solid #c8e6c9;
+        background: white;
+        color: #2e7d32;
+        font-weight: 500;
+        min-width: 70px;
+        border-radius: 10px;
+        padding: 8px 16px;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+    }
+
+    .size-btn .stock-count {
+        color: #6c757d;
+        font-size: 11px;
+        transition: color 0.3s ease;
+    }
+
+    .size-btn:hover:not(:disabled) {
+        background: #2e7d32 !important;
+        border-color: #2e7d32 !important;
+        color: white !important;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(46, 125, 50, 0.3);
+    }
+
+    .size-btn:hover:not(:disabled) .stock-count {
+        color: white !important;
+    }
+
+    .size-btn.active {
+        background: #2e7d32 !important;
+        border-color: #2e7d32 !important;
+        color: white !important;
+        box-shadow: 0 2px 8px rgba(46, 125, 50, 0.3);
+    }
+
+    .size-btn.active .stock-count {
+        color: white !important;
+    }
+
+    .size-btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        background: #e9ecef !important;
+        border-color: #dee2e6 !important;
+        color: #6c757d !important;
+    }
+
     @media (max-width: 768px) {
-        .d-flex.gap-3 {
+        .d-flex.gap-2 {
             flex-wrap: wrap !important;
         }
-        .d-flex.gap-3 button {
+        .btn-primary-custom, .btn-outline-custom {
+            white-space: normal;
+            font-size: 13px;
+            padding: 0.5rem 0.75rem;
+        }
+        .flex-grow-1 {
+            flex-grow: 0 !important;
             width: auto !important;
+        }
+    }
+
+    @media (max-width: 576px) {
+        .d-flex.gap-2 {
+            flex-direction: column;
+            width: 100%;
+        }
+        .d-flex.gap-2 .btn-primary-custom,
+        .d-flex.gap-2 .btn-outline-custom,
+        .d-flex.gap-2 .border {
+            width: 100%;
+        }
+        .flex-grow-1 {
+            width: 100% !important;
         }
     }
 </style>
 
 <script>
+    // Rang tanlash
+    let selectedColor = '';
+    let selectedSize = '';
+    let selectedStock = 0;
+
+    document.querySelectorAll('.color-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('.color-btn').forEach(b => {
+                b.classList.remove('active');
+            });
+
+            this.classList.add('active');
+            selectedColor = this.dataset.color;
+            document.getElementById('selectedColor').value = selectedColor;
+            loadSizes(selectedColor);
+        });
+    });
+
+    function loadSizes(color) {
+        fetch(`/api/get-sizes/?product_id={{ product.id }}&color=${color}`)
+            .then(response => response.json())
+            .then(data => {
+                const sizeContainer = document.getElementById('sizeContainer');
+                const sizeSection = document.getElementById('sizeSection');
+
+                if (data.sizes && data.sizes.length > 0) {
+                    sizeSection.style.display = 'block';
+                    sizeContainer.innerHTML = '';
+
+                    data.sizes.forEach(sizeInfo => {
+                        const btn = document.createElement('button');
+                        btn.type = 'button';
+                        btn.className = 'size-btn btn btn-outline-secondary';
+                        btn.dataset.size = sizeInfo.size;
+                        btn.dataset.stock = sizeInfo.stock;
+                        btn.innerHTML = `${sizeInfo.size} <small class="stock-count">(${sizeInfo.stock})</small>`;
+
+                        if (sizeInfo.stock <= 0) {
+                            btn.disabled = true;
+                        }
+
+                        btn.addEventListener('click', function() {
+                            document.querySelectorAll('.size-btn').forEach(b => {
+                                b.classList.remove('active');
+                            });
+                            this.classList.add('active');
+                            selectedSize = this.dataset.size;
+                            selectedStock = parseInt(this.dataset.stock);
+                            document.getElementById('selectedSize').value = selectedSize;
+
+                            const stockInfo = document.querySelector('.variant-stock-info');
+                            stockInfo.innerHTML = `<small class="text-success">✅ ${selectedColor} rang, ${selectedSize} o'lchamda ${selectedStock} dona mavjud</small>`;
+
+                            const quantityInput = document.getElementById('quantity');
+                            quantityInput.max = selectedStock;
+                            if (parseInt(quantityInput.value) > selectedStock) {
+                                quantityInput.value = selectedStock;
+                            }
+                        });
+
+                        sizeContainer.appendChild(btn);
+                    });
+                } else {
+                    sizeSection.style.display = 'none';
+                    showToast('Bu rangda mavjud o\'lcham yo\'q', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Xatolik:', error);
+            });
+    }
+
     function incrementQuantity() {
         let input = document.getElementById('quantity');
         let max = parseInt(input.max);
@@ -517,6 +801,18 @@
     document.getElementById('addToCartBtn')?.addEventListener('click', function() {
         let quantity = parseInt(document.getElementById('quantity').value);
         let productId = {{ product.id }};
+        let color = document.getElementById('selectedColor')?.value || '';
+        let size = document.getElementById('selectedSize')?.value || '';
+
+        if (!color) {
+            showToast('Iltimos, rang tanlang!', 'error');
+            return;
+        }
+
+        if (!size) {
+            showToast('Iltimos, o\'lcham tanlang!', 'error');
+            return;
+        }
 
         fetch("{% url 'shop:cart_add' %}", {
             method: "POST",
@@ -524,7 +820,7 @@
                 'X-CSRFToken': getCookie('csrftoken'),
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({product_id: productId, quantity: quantity})
+            body: JSON.stringify({product_id: productId, quantity: quantity, size: size, color: color})
         })
         .then(response => response.json())
         .then(data => {
@@ -549,6 +845,18 @@
     document.getElementById('buyNowBtn')?.addEventListener('click', function() {
         let quantity = parseInt(document.getElementById('quantity').value);
         let productId = {{ product.id }};
+        let color = document.getElementById('selectedColor')?.value || '';
+        let size = document.getElementById('selectedSize')?.value || '';
+
+        if (!color) {
+            showToast('Iltimos, rang tanlang!', 'error');
+            return;
+        }
+
+        if (!size) {
+            showToast('Iltimos, o\'lcham tanlang!', 'error');
+            return;
+        }
 
         fetch("{% url 'shop:cart_add' %}", {
             method: "POST",
@@ -556,7 +864,7 @@
                 'X-CSRFToken': getCookie('csrftoken'),
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({product_id: productId, quantity: quantity})
+            body: JSON.stringify({product_id: productId, quantity: quantity, size: size, color: color})
         })
         .then(response => response.json())
         .then(data => {

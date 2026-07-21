@@ -1,4 +1,5 @@
 import json
+from django.utils import timezone
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
@@ -6,9 +7,9 @@ from django.contrib import messages
 from django.urls import reverse
 from django.utils import timezone
 from django.db import models
+from django.conf import settings
 from .forms import OrderForm, ReviewForm
-from .models import Category, Product, Cart, CartItem, Order, OrderItem, SessionCart, SessionCartItem, Wishlist, Review, \
-    Coupon, UserCoupon
+from .models import Category, Product, ProductVariant, Cart, CartItem, Order, OrderItem, SessionCart, SessionCartItem, Wishlist, Review, Coupon, UserCoupon
 
 
 def get_or_create_session_cart(request):
@@ -159,6 +160,15 @@ def index_view(request):
     }
     return render(request, 'shop/index.html', context)
 
+def categories_view(request):
+    """Barcha kategoriyalar sahifasi"""
+    categories = Category.objects.all()
+    context = {
+        'categories': categories,
+        'cart_total_items': get_cart_total_items(request),
+        'wishlist_count': get_wishlist_count(request),
+    }
+    return render(request, 'shop/categories.html', context)
 
 def product_list_view(request):
     """Mahsulotlar ro'yxati - barcha filterlar bilan"""
@@ -230,11 +240,11 @@ def product_list_view(request):
 
 
 def product_detail_view(request, category_slug, product_slug):
-    """Mahsulot detali - sharhlar bilan"""
+    """Mahsulot detali - variantlar bilan"""
     product = get_object_or_404(Product, slug=product_slug, category__slug=category_slug, is_available=True)
     related_products = Product.objects.filter(category=product.category, is_available=True).exclude(id=product.id)[:4]
 
-    # Sharhlar
+    # Sharhlar - faqat tasdiqlanganlari
     reviews = Review.objects.filter(product=product, is_approved=True).order_by('-created_at')
 
     # O'rtacha reyting
@@ -264,6 +274,25 @@ def product_detail_view(request, category_slug, product_slug):
     if request.user.is_authenticated:
         is_wishlisted = Wishlist.objects.filter(user=request.user, product=product).exists()
 
+    # Mavjud ranglar
+    available_colors = product.get_available_colors()
+
+    # Mavjud o'lchamlar (barcha)
+    available_sizes = product.get_available_sizes()
+
+    # ========== MUHIM: Foydalanuvchi sharh yozish imkoniyatini tekshirish ==========
+    can_review = False
+    if request.user.is_authenticated and not user_review:
+        # To'g'ridan-to'g'ri OrderItem dan tekshirish
+        order_items = OrderItem.objects.filter(
+            order__user=request.user,
+            order__status='delivered',
+            product=product,
+            can_review=True
+        )
+        if order_items.exists():
+            can_review = True
+
     context = {
         'product': product,
         'related_products': related_products,
@@ -276,18 +305,66 @@ def product_detail_view(request, category_slug, product_slug):
         'user_review': user_review,
         'is_wishlisted': is_wishlisted,
         'wishlist_count': get_wishlist_count(request),
+        'available_colors': available_colors,
+        'available_sizes': available_sizes,
+        'can_review': can_review,
     }
     return render(request, 'shop/product_detail.html', context)
 
+
+from .models import TelegramUser
+
+
+# Telegram xabarnoma yuborish uchun yordamchi funksiya
+def send_telegram_notification(user, title, message, link=None):
+    """Foydalanuvchiga Telegram xabarnoma yuborish"""
+    try:
+        from bot.bot import send_telegram_message
+        from .models import TelegramUser
+
+        telegram_user = TelegramUser.objects.filter(user=user, is_active=True).first()
+        if telegram_user and telegram_user.chat_id:
+            full_message = f"""
+<b>{title}</b>
+
+{message}
+
+📅 Sana: {timezone.now().strftime('%d.%m.%Y %H:%M')}
+            """
+            if link:
+                full_message += f"\n\n<a href=\"{link}\">🔗 Batafsil ma'lumot</a>"
+
+            send_telegram_message(telegram_user.chat_id, full_message)
+            return True
+    except Exception as e:
+        print(f"Xabarnoma yuborish xatolik: {e}")
+    return False
+
+def send_bulk_telegram_notification(users, title, message, link=None):
+    """Bir nechta foydalanuvchilarga xabarnoma yuborish"""
+    sent_count = 0
+    for user in users:
+        if send_telegram_notification(user, title, message, link):
+            sent_count += 1
+    return sent_count
 
 def category_products_view(request, category_slug):
     """Kategoriya bo'yicha mahsulotlar"""
     category = get_object_or_404(Category, slug=category_slug)
     products = Product.objects.filter(category=category, is_available=True)
 
+    # property ga qiymat belgilash o'rniga, context ga qo'shimcha ma'lumot yuborish
+    product_list = []
+    for product in products:
+        product_list.append({
+            'product': product,
+            'total_stock': product.total_stock,
+            'variants': product.variants.all()
+        })
+
     context = {
         'category': category,
-        'products': products,
+        'product_list': product_list,
         'cart_total_items': get_cart_total_items(request),
         'wishlist_count': get_wishlist_count(request),
     }
@@ -295,56 +372,143 @@ def category_products_view(request, category_slug):
 
 
 def cart_add_view(request):
-    """Savatga qo'shish - AJAX"""
+    """Savatga qo'shish - AJAX (rang va o'lcham bilan)"""
     if request.method == 'POST':
         data = json.loads(request.body)
         product_id = data.get('product_id')
+        size = data.get('size', '')
+        color = data.get('color', '')
         quantity = int(data.get('quantity', 1))
 
         product = get_object_or_404(Product, id=product_id, is_available=True)
 
-        if quantity > product.stock and product.stock > 0:
+        # Rang va o'lchamni tekshirish
+        if not color:
             return JsonResponse({
                 'success': False,
-                'message': f'Kechirasiz, omborda faqat {product.stock} dona qoldi'
+                'message': 'Iltimos, rang tanlang!'
+            })
+
+        if not size:
+            return JsonResponse({
+                'success': False,
+                'message': 'Iltimos, o\'lcham tanlang!'
+            })
+
+        # Variantdagi sonni tekshirish
+        variant_stock = product.get_variant_stock(color, size)
+        if variant_stock < quantity:
+            return JsonResponse({
+                'success': False,
+                'message': f'Kechirasiz, {color} rang, {size} o\'lchamda faqat {variant_stock} dona qoldi!'
             })
 
         if request.user.is_authenticated:
             cart, created = Cart.objects.get_or_create(user=request.user)
-            cart_item, created = CartItem.objects.get_or_create(cart=cart, product=product)
+            cart_item, created = CartItem.objects.get_or_create(
+                cart=cart,
+                product=product,
+                size=size,
+                color=color,
+                defaults={'quantity': quantity}
+            )
             if not created:
-                if cart_item.quantity + quantity > product.stock and product.stock > 0:
+                new_quantity = cart_item.quantity + quantity
+                if new_quantity > variant_stock:
                     return JsonResponse({
                         'success': False,
-                        'message': f'Kechirasiz, omborda faqat {product.stock} dona qoldi'
+                        'message': f'Kechirasiz, {color} rang, {size} o\'lchamda faqat {variant_stock} dona qoldi!'
                     })
-                cart_item.quantity += quantity
-            else:
-                cart_item.quantity = quantity
-            cart_item.save()
+                cart_item.quantity = new_quantity
+                cart_item.save()
             total_items = cart.total_items
         else:
             session_cart = get_or_create_session_cart(request)
-            session_item, created = SessionCartItem.objects.get_or_create(session_cart=session_cart, product=product)
+            session_item, created = SessionCartItem.objects.get_or_create(
+                session_cart=session_cart,
+                product=product,
+                size=size,
+                color=color,
+                defaults={'quantity': quantity}
+            )
             if not created:
-                if session_item.quantity + quantity > product.stock and product.stock > 0:
-                    return JsonResponse({
-                        'success': False,
-                        'message': f'Kechirasiz, omborda faqat {product.stock} dona qoldi'
-                    })
                 session_item.quantity += quantity
-            else:
-                session_item.quantity = quantity
-            session_item.save()
+                session_item.save()
             total_items = session_cart.total_items
 
         return JsonResponse({
             'success': True,
             'total_items': total_items,
-            'message': f'{product.name} savatga qo\'shildi'
+            'message': f'{product.name} ({color}, {size}) savatga qo\'shildi'
         })
 
     return JsonResponse({'success': False, 'message': 'Xatolik yuz berdi'})
+
+
+def telegram_settings_view(request):
+    """Foydalanuvchi Telegram chat ID sini sozlash"""
+    if not request.user.is_authenticated:
+        messages.warning(request, 'Sozlamalarni ko\'rish uchun tizimga kiring!')
+        return redirect('accounts:login')
+
+    telegram_data, created = TelegramUser.objects.get_or_create(user=request.user)
+
+    if request.method == 'POST':
+        chat_id = request.POST.get('chat_id', '').strip()
+        is_active = request.POST.get('is_active') == 'on'
+
+        if chat_id:
+            # Chat ID ni tekshirish (test xabar yuborish)
+            from bot.bot import send_telegram_message
+            test_message = f"""
+<b>✅ XABARNOMA SOZLAMALARI SOZLANDI!</b>
+
+👤 Foydalanuvchi: {request.user.phone_number}
+🆔 Chat ID: {chat_id}
+
+Endi sizga quyidagi xabarlar keladi:
+• 🛍 Buyurtma berilganda
+• 🔄 Buyurtma holati o'zgarganda  
+• 📦 Buyurtma yetkazilganda
+• ⭐ Yangi sharhlar (adminlar uchun)
+
+<b>Xabarnomalardan to'liq foydalanish uchun ushbu sozlamani faollashtiring!</b>
+            """
+            result = send_telegram_message(chat_id, test_message)
+
+            if result and result.get('ok'):
+                telegram_data.chat_id = chat_id
+                telegram_data.is_active = is_active
+                telegram_data.save()
+                messages.success(request, "✅ Telegram xabarnoma sozlamalari muvaffaqiyatli saqlandi!")
+            else:
+                messages.error(request,
+                               "❌ Chat ID noto'g'ri! Iltimos, botdan to'g'ri ID ni oling.\n\nBotga o'ting va /start buyrug'ini yuboring.")
+        else:
+            telegram_data.is_active = is_active
+            telegram_data.save()
+            messages.success(request, "✅ Sozlamalar saqlandi!")
+
+        return redirect('shop:telegram_settings')
+
+    context = {
+        'chat_id': telegram_data.chat_id,
+        'is_active': telegram_data.is_active,
+        'bot_username': settings.TELEGRAM_BOT_USERNAME,
+    }
+    return render(request, 'shop/telegram_settings.html', context)
+
+def get_sizes_api(request):
+    """Rangga mos o'lchamlarni qaytarish API"""
+    product_id = request.GET.get('product_id')
+    color = request.GET.get('color')
+
+    product = get_object_or_404(Product, id=product_id)
+    variants = product.variants.filter(color=color, stock__gt=0)
+
+    sizes = [{'size': v.size, 'stock': v.stock} for v in variants]
+
+    return JsonResponse({'sizes': sizes})
 
 
 def cart_view(request):
@@ -424,32 +588,60 @@ def cart_update_view(request, item_id):
         return JsonResponse({'success': False, 'message': 'Tizimga kiring!'})
 
     if request.method == 'POST':
-        data = json.loads(request.body)
-        quantity = int(data.get('quantity', 1))
+        try:
+            data = json.loads(request.body)
+            quantity = int(data.get('quantity', 1))
 
-        cart_item = get_object_or_404(CartItem, id=item_id, cart__user=request.user)
+            cart_item = get_object_or_404(CartItem, id=item_id, cart__user=request.user)
 
-        if quantity > cart_item.product.stock and cart_item.product.stock > 0:
+            # Mahsulotning variantini tekshirish
+            if cart_item.size and cart_item.color:
+                variant = ProductVariant.objects.filter(
+                    product=cart_item.product,
+                    size=cart_item.size,
+                    color=cart_item.color
+                ).first()
+                max_stock = variant.stock if variant else 0
+            elif cart_item.size:
+                variant = ProductVariant.objects.filter(
+                    product=cart_item.product,
+                    size=cart_item.size
+                ).first()
+                max_stock = variant.stock if variant else 0
+            elif cart_item.color:
+                variant = ProductVariant.objects.filter(
+                    product=cart_item.product,
+                    color=cart_item.color
+                ).first()
+                max_stock = variant.stock if variant else 0
+            else:
+                max_stock = cart_item.product.total_stock
+
+            # Maksimal sondan oshib ketmasligini tekshirish
+            if quantity > max_stock:
+                return JsonResponse({
+                    'success': False,
+                    'message': f'Kechirasiz, omborda faqat {max_stock} dona qoldi!'
+                })
+
+            if quantity > 0:
+                cart_item.quantity = quantity
+                cart_item.save()
+            else:
+                cart_item.delete()
+
+            cart = Cart.objects.get(user=request.user)
             return JsonResponse({
-                'success': False,
-                'message': f'Kechirasiz, omborda faqat {cart_item.product.stock} dona qoldi'
+                'success': True,
+                'total_price': float(cart_item.total_price) if quantity > 0 else 0,
+                'cart_total': float(cart.total_price),
+                'total_items': cart.total_items
             })
+        except Exception as e:
+            print(f"Xatolik: {e}")
+            return JsonResponse({'success': False, 'message': 'Xatolik yuz berdi!'})
 
-        if quantity > 0:
-            cart_item.quantity = quantity
-            cart_item.save()
-        else:
-            cart_item.delete()
-
-        cart = Cart.objects.get(user=request.user)
-        return JsonResponse({
-            'success': True,
-            'total_price': float(cart_item.total_price) if quantity > 0 else 0,
-            'cart_total': float(cart.total_price),
-            'total_items': cart.total_items
-        })
-
-    return JsonResponse({'success': False})
+    return JsonResponse({'success': False, 'message': 'Xatolik yuz berdi!'})
 
 
 # ========== KUPON VIEWS ==========
@@ -546,13 +738,11 @@ def checkout_view(request):
             coupon_id = request.session.get('coupon_id')
             coupon = Coupon.objects.get(id=coupon_id, is_active=True)
 
-            # Kupon hali ham amal qilishini tekshirish
             now = timezone.now()
             if coupon.valid_from <= now <= coupon.valid_to:
                 discount = coupon.calculate_discount(cart.total_price)
                 coupon_code = coupon.code
             else:
-                # Kupon muddati tugagan bo'lsa, sessiondan o'chirish
                 if 'coupon_id' in request.session:
                     del request.session['coupon_id']
                 if 'coupon_code' in request.session:
@@ -582,7 +772,6 @@ def checkout_view(request):
             order.total_amount = final_total
             order.save()
 
-            # Kupon ishlatilganligini qayd qilish
             if coupon:
                 UserCoupon.objects.create(
                     user=request.user,
@@ -592,7 +781,6 @@ def checkout_view(request):
                 coupon.used_count += 1
                 coupon.save()
 
-                # Sessiondan tozalash
                 if 'coupon_code' in request.session:
                     del request.session['coupon_code']
                 if 'coupon_discount' in request.session:
@@ -600,22 +788,96 @@ def checkout_view(request):
                 if 'coupon_id' in request.session:
                     del request.session['coupon_id']
 
-            # Buyurtma mahsulotlarini saqlash
+            # Buyurtma mahsulotlarini saqlash va variantdan sonni kamaytirish
             for item in cart.items.all():
                 OrderItem.objects.create(
                     order=order,
                     product=item.product,
+                    size=item.size,
+                    color=item.color,
                     quantity=item.quantity,
                     price=item.product.price
                 )
 
-                # Mahsulot sonini kamaytirish
-                product = item.product
-                product.stock -= item.quantity
-                product.save()
+                # Variantdan sonni kamaytirish
+                if item.size and item.color:
+                    variant = ProductVariant.objects.filter(
+                        product=item.product,
+                        size=item.size,
+                        color=item.color
+                    ).first()
+                    if variant:
+                        variant.stock -= item.quantity
+                        variant.save()
+                elif item.size:
+                    variant = ProductVariant.objects.filter(
+                        product=item.product,
+                        size=item.size
+                    ).first()
+                    if variant:
+                        variant.stock -= item.quantity
+                        variant.save()
+                elif item.color:
+                    variant = ProductVariant.objects.filter(
+                        product=item.product,
+                        color=item.color
+                    ).first()
+                    if variant:
+                        variant.stock -= item.quantity
+                        variant.save()
 
             # Savatni tozalash
             cart.items.all().delete()
+
+            # ========== TELEGRAM XABARNOMA YUBORISH ==========
+            try:
+                from bot.bot import send_telegram_message
+                from .models import TelegramUser
+
+                # O'zbekiston vaqtini olish
+                uzb_time = timezone.localtime(timezone.now())
+                formatted_time = uzb_time.strftime('%d.%m.%Y %H:%M')
+
+                # Foydalanuvchiga xabar yuborish
+                user_telegram = TelegramUser.objects.filter(user=request.user, is_active=True).first()
+                if user_telegram and user_telegram.chat_id:
+                    order_message = f"""
+<b>✅ BUYURTMA QABUL QILINDI!</b>
+
+🆔 Buyurtma raqami: <b>#{order.id}</b>
+💰 Umumiy summa: <b>{order.total_amount:,.0f} so'm</b>
+📅 Sana: {formatted_time}
+
+📦 Buyurtmangiz holatini "Buyurtmalarim" bo'limidan kuzatishingiz mumkin.
+
+<a href="http://127.0.0.1:8000/my-orders/">🔗 Buyurtmalarim sahifasiga o'tish</a>
+                    """
+                    send_telegram_message(user_telegram.chat_id, order_message)
+                    print(f"✅ Xabar yuborildi: {request.user.phone_number}")
+
+                # Adminlarga xabar yuborish
+                from django.contrib.auth import get_user_model
+                User = get_user_model()
+                admins = User.objects.filter(is_staff=True)
+                for admin in admins:
+                    admin_telegram = TelegramUser.objects.filter(user=admin, is_active=True).first()
+                    if admin_telegram and admin_telegram.chat_id:
+                        admin_message = f"""
+<b>🆕 YANGI BUYURTMA!</b>
+
+👤 Mijoz: {request.user.phone_number}
+🆔 Buyurtma: #{order.id}
+💰 Summa: {order.total_amount:,.0f} so'm
+📦 Mahsulotlar: {cart.total_items} dona
+📅 Sana: {formatted_time}
+
+<a href="http://127.0.0.1:8000/admin/shop/order/{order.id}/change/">🔗 Admin panelda ko'rish</a>
+                        """
+                        send_telegram_message(admin_telegram.chat_id, admin_message)
+                        print(f"✅ Admin xabar yuborildi: {admin.phone_number}")
+
+            except Exception as e:
+                print(f"Telegram xabarnoma yuborishda xatolik: {e}")
 
             messages.success(request, f'✅ Buyurtma qabul qilindi! Buyurtma raqami: #{order.id}')
             return redirect('shop:order_success', order_id=order.id)
@@ -647,6 +909,45 @@ def order_success_view(request, order_id):
         return redirect('accounts:login')
 
     order = get_object_or_404(Order, id=order_id, user=request.user)
+
+    # Agar buyurtma yetkazilgan bo'lsa, sharh yozish imkoniyatini yoqish
+    if order.status == 'delivered':
+        for item in order.items.all():
+            if not item.can_review:
+                item.can_review = True
+                item.save()
+
+        # ========== TELEGRAM XABARNOMA (Yetkazilganligi haqida) ==========
+        try:
+            from bot.bot import send_telegram_message
+            from .models import TelegramNotification
+
+            user_telegram = TelegramNotification.objects.filter(user=request.user, is_active=True).first()
+            if user_telegram:
+                # Mahsulotlar ro'yxatini tayyorlash
+                products_list = ""
+                for item in order.items.all():
+                    products_list += f"• {item.product.name} x {item.quantity} dona\n"
+
+                delivered_message = f"""
+<b>📦 BUYURTMANGIZ YETKAZILDI!</b>
+
+🆔 Buyurtma raqami: <b>#{order.id}</b>
+💰 Umumiy summa: <b>{order.total_amount:,.0f} so'm</b>
+📅 Yetkazilgan sana: {timezone.now().strftime('%d.%m.%Y %H:%M')}
+
+<b>📋 Mahsulotlar:</b>
+{products_list}
+
+⭐ <b>Mahsulotni baholash va sharh qoldirish imkoniyati ochildi!</b>
+
+<a href="http://127.0.0.1:8000/my-orders/">🔗 Buyurtmalarim sahifasiga o'tish</a>
+                """
+                send_telegram_message(user_telegram.chat_id, delivered_message)
+                print(f"✅ Telegram xabar yuborildi: {user_telegram.chat_id}")
+        except Exception as e:
+            print(f"Telegram xabar yuborishda xatolik: {e}")
+
     context = {
         'order': order,
         'wishlist_count': get_wishlist_count(request),
@@ -673,9 +974,27 @@ def my_orders_view(request):
 
 @login_required
 def add_review_view(request, product_id):
-    """Sharh qo'shish"""
+    """Sharh qo'shish - faqat sotib olgan va yetkazilgan mahsulotlar uchun"""
     product = get_object_or_404(Product, id=product_id, is_available=True)
 
+    # Foydalanuvchi bu mahsulotni sotib olganmi va yetkazilganmi tekshirish
+    can_write_review = False
+    order_item = None
+
+    # Foydalanuvchining yetkazilgan buyurtmalarini tekshirish
+    orders = Order.objects.filter(user=request.user, status='delivered')
+    for order in orders:
+        order_item = order.items.filter(product=product, can_review=True).first()
+        if order_item:
+            can_write_review = True
+            break
+
+    if not can_write_review:
+        messages.error(request,
+                       'Siz bu mahsulotni sotib olmagansiz yoki yetkazib berilmagan! Faqat sotib olingan va yetkazilgan mahsulotlarga sharh yozishingiz mumkin.')
+        return redirect('shop:product_detail', category_slug=product.category.slug, product_slug=product.slug)
+
+    # Foydalanuvchi allaqachon sharh yozganmi?
     existing_review = Review.objects.filter(product=product, user=request.user).first()
     if existing_review:
         messages.error(request, 'Siz bu mahsulotga allaqachon sharh yozgansiz!')
@@ -692,6 +1011,12 @@ def add_review_view(request, product_id):
                 rating=int(rating),
                 comment=comment
             )
+            # Sharh yozilganligini belgilash
+            if order_item:
+                order_item.can_review = False
+                order_item.reviewed_at = timezone.now()
+                order_item.save()
+
             messages.success(request, 'Sharhingiz qabul qilindi! Rahmat!')
         else:
             if not rating:

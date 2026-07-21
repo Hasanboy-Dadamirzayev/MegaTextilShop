@@ -17,7 +17,7 @@
                 <a href="{% url 'shop:product_list' %}" class="btn-primary-custom">
                     <i class="fas fa-shopping-bag me-2"></i> Xarid qilish
                 </a>
-                <a href="https://megatekstil.com/index.html" class="btn-outline-custom">
+                <a href="https://megatekstil.com/index.html" target="_blank" class="btn-outline-custom">
                     <i class="fas fa-info-circle me-2"></i> Batafsil
                 </a>
             </div>
@@ -32,10 +32,10 @@
     <div class="mb-5">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h3 style="color: #1a2e1f;"><i class="fas fa-tags me-2"></i>Kategoriyalar</h3>
-            <a href="{% url 'shop:product_list' %}" class="link-custom">Barchasi <i class="fas fa-arrow-right ms-1"></i></a>
+            <a href="{% url 'shop:categories' %}" class="link-custom">Barchasini ko'rish <i class="fas fa-arrow-right ms-1"></i></a>
         </div>
         <div class="row g-4">
-            {% for category in categories %}
+            {% for category in categories|slice:":6" %}
             <div class="col-6 col-md-4 col-lg-2">
                 <a href="{% url 'shop:category_products' category.slug %}" class="text-decoration-none">
                     <div class="text-center p-3 bg-white rounded-4 shadow-sm hover-effect">
@@ -58,7 +58,7 @@
     <div class="mb-5">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h3 style="color: #1a2e1f;"><i class="fas fa-star me-2" style="color: #ffc107;"></i>Tavsiya etilgan</h3>
-            <a href="{% url 'shop:product_list' %}?featured=true" class="link-custom">Hammasi <i class="fas fa-arrow-right ms-1"></i></a>
+            <a href="{% url 'shop:product_list' %}?featured=true" class="link-custom">Hammasini ko'rish <i class="fas fa-arrow-right ms-1"></i></a>
         </div>
         <div class="row g-4">
             {% for product in featured_products %}
@@ -81,12 +81,23 @@
                                 <span class="badge bg-danger">{{ product.discount_percent }}%</span>
                                 {% endif %}
                             </div>
+                            {% if product.total_stock == 0 %}
+                            <small class="text-danger d-block mt-1">❌ Soni tugagan</small>
+                            {% elif product.total_stock < 5 %}
+                            <small class="text-warning d-block mt-1">⚠️ Qolgani {{ product.total_stock }} dona</small>
+                            {% endif %}
                         </div>
                     </a>
                     <div class="card-footer bg-transparent border-0 pb-3">
+                        {% if product.total_stock > 0 %}
                         <button class="btn-primary-custom w-100 add-to-cart-btn" data-product-id="{{ product.id }}" style="padding: 0.5rem;">
                             <i class="fas fa-cart-plus me-2"></i> Savatga
                         </button>
+                        {% else %}
+                        <button class="btn-secondary-custom w-100" disabled style="padding: 0.5rem;">
+                            <i class="fas fa-times-circle me-2"></i> Soni tugagan
+                        </button>
+                        {% endif %}
                     </div>
                 </div>
             </div>
@@ -100,7 +111,7 @@
     <div class="mb-5">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h3 style="color: #1a2e1f;"><i class="fas fa-gem me-2" style="color: #2e7d32;"></i>Yangi mahsulotlar</h3>
-            <a href="{% url 'shop:product_list' %}?sort=newest" class="link-custom">Hammasi <i class="fas fa-arrow-right ms-1"></i></a>
+            <a href="{% url 'shop:product_list' %}?sort=newest" class="link-custom">Hammasini ko'rish <i class="fas fa-arrow-right ms-1"></i></a>
         </div>
         <div class="row g-4">
             {% for product in new_products %}
@@ -125,12 +136,23 @@
                                 <span class="text-muted text-decoration-line-through small">{{ product.old_price|floatformat:0 }} so'm</span>
                                 {% endif %}
                             </div>
+                            {% if product.total_stock == 0 %}
+                            <small class="text-danger d-block mt-1">❌ Soni tugagan</small>
+                            {% elif product.total_stock < 5 %}
+                            <small class="text-warning d-block mt-1">⚠️ Qolgani {{ product.total_stock }} dona</small>
+                            {% endif %}
                         </div>
                     </a>
                     <div class="card-footer bg-transparent border-0 pb-3">
+                        {% if product.total_stock > 0 %}
                         <button class="btn-primary-custom w-100 add-to-cart-btn" data-product-id="{{ product.id }}" style="padding: 0.5rem;">
                             <i class="fas fa-cart-plus me-2"></i> Savatga
                         </button>
+                        {% else %}
+                        <button class="btn-secondary-custom w-100" disabled style="padding: 0.5rem;">
+                            <i class="fas fa-times-circle me-2"></i> Soni tugagan
+                        </button>
+                        {% endif %}
                     </div>
                 </div>
             </div>
@@ -188,6 +210,14 @@
     }
     .link-custom:hover {
         text-decoration: underline;
+    }
+    .btn-secondary-custom {
+        background: #e0e0e0;
+        border: none;
+        border-radius: 12px;
+        font-weight: 600;
+        color: #666;
+        cursor: not-allowed;
     }
 </style>
 
